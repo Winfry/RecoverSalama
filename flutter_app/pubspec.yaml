@@ -1,0 +1,77 @@
+name: salama_recover
+description: AI-powered surgical recovery platform built for Kenya.
+publish_to: 'none'
+version: 2.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: '>=3.16.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP & API
+  dio: ^5.4.0
+  retrofit: ^4.1.0
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  hooks_riverpod: ^2.5.1
+
+  # Database / Storage
+  supabase_flutter: ^2.3.4
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.2.3
+
+  # UI Components
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.10+1
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  lottie: ^3.1.0
+
+  # Charts & Visualisation
+  fl_chart: ^0.68.0
+
+  # Internationalisation
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.19.0
+
+  # Notifications
+  flutter_local_notifications: ^17.2.2
+  firebase_messaging: ^14.9.4
+
+  # Utilities
+  url_launcher: ^6.3.0
+  permission_handler: ^11.3.1
+  connectivity_plus: ^6.0.3
+  flutter_secure_storage: ^9.2.2
+  pinput: ^5.0.0
+  smooth_page_indicator: ^1.1.0
+
+  # Navigation
+  go_router: ^14.0.0
+
+  # Environment
+  flutter_dotenv: ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  retrofit_generator: ^8.1.0
+  build_runner: ^2.4.8
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/animations/
+    - .env
+
+  # Localisation
+  generate: true

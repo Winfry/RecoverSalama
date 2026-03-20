@@ -1,0 +1,17 @@
+{
+  "@@locale": "en",
+  "appTitle": "SalamaRecover",
+  "tagline": "Recover Safely. Heal Confidently.",
+  "startRecovery": "Start Recovery Plan",
+  "guestMode": "Guest Mode",
+  "dailyCheckIn": "Daily Check-In",
+  "howAreYouFeeling": "How are you feeling today?",
+  "painLevel": "Pain Level",
+  "symptoms": "Symptoms",
+  "submit": "Submit",
+  "home": "Home",
+  "plan": "Plan",
+  "ai": "AI",
+  "diet": "Diet",
+  "doctor": "Doctor"
+}

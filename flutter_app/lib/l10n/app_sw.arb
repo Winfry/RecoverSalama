@@ -1,0 +1,17 @@
+{
+  "@@locale": "sw",
+  "appTitle": "SalamaRecover",
+  "tagline": "Pona Salama. Pona kwa Ujasiri.",
+  "startRecovery": "Anza Mpango wa Kupona",
+  "guestMode": "Hali ya Mgeni",
+  "dailyCheckIn": "Kujiangalia Kila Siku",
+  "howAreYouFeeling": "Unajisikiaje leo?",
+  "painLevel": "Kiwango cha Maumivu",
+  "symptoms": "Dalili",
+  "submit": "Tuma",
+  "home": "Nyumbani",
+  "plan": "Mpango",
+  "ai": "AI",
+  "diet": "Mlo",
+  "doctor": "Daktari"
+}
