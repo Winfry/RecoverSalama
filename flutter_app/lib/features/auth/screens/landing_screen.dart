@@ -1,236 +1,299 @@
+// ─────────────────────────────────────────────────────────────
+// SalamaRecover — Screen 01: Landing Page
+// The first screen every patient sees. Gradient hero, bilingual
+// toggle, two CTAs, and four benefit cards.
+// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
+// ─────────────────────────────────────────────────────────────
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/salama_widgets.dart';
 
-/// Screen 01 — Landing Page
-/// First impression screen with 2 CTAs: "Start Recovery Plan" and "Guest Mode".
-/// Shows feature overview cards: AI Guidance, Kenya Diet, Mental Health, Doctor Connect.
-/// Language toggle (EN | SW) in top right.
-class LandingScreen extends StatelessWidget {
+class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
 
   @override
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen> {
+  String _lang = 'EN';
+
+  // Bilingual copy — all text switches instantly on toggle
+  final Map<String, Map<String, String>> _copy = {
+    'EN': {
+      'tag': 'Recover Safely. Heal Confidently.',
+      'sub':
+          'AI-guided recovery tailored to your surgery, your life, and your healing.',
+      'start': 'Start Recovery Plan →',
+      'guest': 'Guest Mode',
+      'label': 'WHAT YOU GET',
+    },
+    'SW': {
+      'tag': 'Pona Salama. Pumzika kwa Amani.',
+      'sub':
+          'Mshauri wako wa kibinafsi wa kupona baada ya upasuaji wako.',
+      'start': 'Anza Mpango wa Kupona →',
+      'guest': 'Kuingia Bila Akaunti',
+      'label': 'UTAKACHOPATA',
+    },
+  };
+
+  @override
   Widget build(BuildContext context) {
+    final t = _copy[_lang]!;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-
-              // Header row: logo + language toggle
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.favorite, color: AppColors.success, size: 24),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'SalamaRecover',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Language toggle
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
+      body: Column(
+        children: [
+          // ── HERO SECTION ──────────────────────────────────
+          // Gradient from #0077B6 (blue) → #005f8e → #00B37E (green)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF0077B6),
+                  Color(0xFF005f8e),
+                  Color(0xFF00B37E),
+                ],
+                stops: [0.0, 0.55, 1.0],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Top bar: logo + language toggle ──
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('🌍', style: TextStyle(fontSize: 14)),
-                        SizedBox(width: 4),
-                        Text(
-                          'SW',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('💚 SalamaRecover',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800)),
+                            Text('SURGICAL RECOVERY AI',
+                                style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 9,
+                                    letterSpacing: 2)),
+                          ],
+                        ),
+                        // Language toggle — switches all text instantly
+                        GestureDetector(
+                          onTap: () => setState(
+                              () => _lang = _lang == 'EN' ? 'SW' : 'EN'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                                _lang == 'EN'
+                                    ? '🌍 Kiswahili'
+                                    : '🌍 English',
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 12)),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
 
-              const SizedBox(height: 40),
+                    const SizedBox(height: 28),
 
-              // Hero section
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primary, Color(0xFF005A8D)],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '🩺',
-                      style: TextStyle(fontSize: 32),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Recover Safely.\nHeal Confidently.',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        height: 1.3,
+                    // ── Hero card — frosted glass effect ──
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('🩺',
+                              style: TextStyle(fontSize: 48)),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(t['tag']!,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.35)),
+                                const SizedBox(height: 6),
+                                Text(t['sub']!,
+                                    style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                        height: 1.5)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'AI-guided recovery tailored to your surgery & Kenyan context.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.85),
-                        height: 1.4,
+
+                    // ── Primary CTA — white button ──
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            context.go(AppRoutes.profileSetup),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          elevation: 3,
+                        ),
+                        child: Text(t['start']!,
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ── Secondary CTA — green outlined ──
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            context.go(AppRoutes.dashboard),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                              color:
+                                  AppColors.success.withOpacity(0.5)),
+                          backgroundColor:
+                              AppColors.success.withOpacity(0.2),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: Text(t['guest']!,
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
+          ),
 
-              const SizedBox(height: 24),
-
-              // CTA Buttons
-              ElevatedButton(
-                onPressed: () => context.go(AppRoutes.profileSetup),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Start Recovery Plan'),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, size: 18),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => context.go(AppRoutes.dashboard),
-                child: const Text('Guest Mode'),
-              ),
-
-              const SizedBox(height: 32),
-
-              // "What You Get" section
-              const Text(
-                'WHAT YOU GET',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Feature cards grid
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.4,
-                children: const [
-                  _FeatureCard(
-                    icon: '🤖',
-                    title: 'AI Guidance',
-                    subtitle: 'Personalised recovery advice',
-                  ),
-                  _FeatureCard(
-                    icon: '🥗',
-                    title: 'Kenya Diet',
-                    subtitle: 'MOH-approved local meals',
-                  ),
-                  _FeatureCard(
-                    icon: '🧠',
-                    title: 'Mental Health',
-                    subtitle: 'Daily mood check-ins',
-                  ),
-                  _FeatureCard(
-                    icon: '🏥',
-                    title: 'Doctor Connect',
-                    subtitle: 'Find hospitals near you',
-                  ),
+          // ── BENEFIT CARDS ─────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t['label']!,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
+                  BenefitCard(
+                      icon: '🤖',
+                      title: _lang == 'EN'
+                          ? 'AI Guidance'
+                          : 'Mwongozo wa AI',
+                      desc: _lang == 'EN'
+                          ? 'Ask anything about your recovery anytime'
+                          : 'Uliza chochote kuhusu kupona kwako'),
+                  BenefitCard(
+                      icon: '🥗',
+                      title: _lang == 'EN'
+                          ? 'Kenya Diet'
+                          : 'Lishe ya Kenya',
+                      desc: _lang == 'EN'
+                          ? 'Local foods that help you heal faster'
+                          : 'Vyakula vya ndani vinavyosaidia',
+                      isBlue: false),
+                  BenefitCard(
+                      icon: '🧠',
+                      title: _lang == 'EN'
+                          ? 'Mental Health'
+                          : 'Afya ya Akili',
+                      desc: _lang == 'EN'
+                          ? 'Daily check-ins for your emotional wellbeing'
+                          : 'Ukaguzi wa kila siku wa hali yako'),
+                  BenefitCard(
+                      icon: '🏥',
+                      title: _lang == 'EN'
+                          ? 'Doctor Connect'
+                          : 'Musiliano na Daktari',
+                      desc: _lang == 'EN'
+                          ? 'Reach hospitals and specialists instantly'
+                          : 'Wasiliana na hospitali mara moja',
+                      isBlue: false),
                 ],
               ),
-
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FeatureCard extends StatelessWidget {
-  final String icon;
-  final String title;
-  final String subtitle;
-
-  const _FeatureCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 24)),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
+
+          // ── PRIVACY FOOTER ────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: const Text(
+              '🔒 Your data is private & secure · For informational support only',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textHint, fontSize: 10),
             ),
+          ),
+
+          // ── BOTTOM NAV ────────────────────────────────────
+          SalamaBottomNav(
+            currentIndex: 0,
+            onTap: (index) {
+              switch (index) {
+                case 0:
+                  break; // Already here
+                case 1:
+                  context.go(AppRoutes.checkIn);
+                  break;
+                case 2:
+                  context.go(AppRoutes.aiChat);
+                  break;
+                case 3:
+                  context.go(AppRoutes.diet);
+                  break;
+                case 4:
+                  context.go(AppRoutes.hospital);
+                  break;
+              }
+            },
           ),
         ],
       ),
