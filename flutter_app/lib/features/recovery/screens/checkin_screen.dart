@@ -1,14 +1,21 @@
+// ─────────────────────────────────────────────────────────────
+// SalamaRecover — Screen 04: Daily Check-In Form
+// THE most important data collection screen. Filled every day.
+// Data feeds the two-layer risk scorer (rules + Gemini).
+// If critical symptom ticked → red banner appears INSTANTLY.
+// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
+// ─────────────────────────────────────────────────────────────
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/colors.dart';
+import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/salama_widgets.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../providers/recovery_provider.dart';
 
-/// Screen 04 — Daily Check-In
-/// Pain slider (0-10), symptom toggles (with critical flags for fever/bleeding),
-/// mood selection (4 emoji options), and "Update Recovery Plan" CTA.
-/// Critical symptom banner appears if fever or wound bleeding selected.
 class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({super.key});
 
@@ -17,320 +24,422 @@ class CheckInScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckInScreenState extends ConsumerState<CheckInScreen> {
-  double _painLevel = 3;
-  final Map<String, bool> _symptoms = {
-    'Fever above 38°C': false,
-    'Wound bleeding': false,
-    'Nausea': false,
-    'Mild headache': false,
-    'Swelling': false,
-    'Dizziness': false,
-  };
-  String? _selectedMood;
+  int _days = 5;
+  double _pain = 4;
+  String _mood = 'Good';
+  final Map<String, bool> _symptoms = {};
 
-  // Critical symptoms that trigger alerts
-  static const _criticalSymptoms = {'Fever above 38°C', 'Wound bleeding'};
+  // Critical symptoms — red checkboxes, trigger emergency banner
+  final _criticalSymptoms = [
+    'Fever above 38°C',
+    'Wound bleeding or discharge',
+    'Severe swelling',
+    'Difficulty breathing',
+  ];
 
-  bool get _hasCriticalSymptoms =>
-      _symptoms.entries.any((e) => e.value && _criticalSymptoms.contains(e.key));
+  // Normal symptoms — green checkboxes, monitored but not alarming
+  final _normalSymptoms = [
+    'Nausea or vomiting',
+    'Constipation',
+    'Mild headache',
+    'Fatigue or weakness',
+  ];
+
+  // True if ANY critical symptom is checked — shows emergency banner
+  bool get _hasCritical =>
+      _criticalSymptoms.any((s) => _symptoms[s] == true);
+
+  // Pain slider color changes with severity
+  Color get _painColor {
+    if (_pain <= 3) return AppColors.success;   // Green — good
+    if (_pain <= 6) return AppColors.warning;   // Amber — moderate
+    return AppColors.emergency;                  // Red — severe
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Try to auto-set days from profile's surgery date
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final profile = ref.read(profileProvider);
+      if (profile.daysSinceSurgery > 0) {
+        setState(() => _days = profile.daysSinceSurgery);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(profileProvider);
-    final day = profile.daysSinceSurgery;
-
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Critical symptom banner
-              if (_hasCriticalSymptoms)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  color: AppColors.emergencyLight,
-                  child: const Row(
-                    children: [
-                      Text('⚠️', style: TextStyle(fontSize: 16)),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Critical symptom detected — contact your hospital',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.emergency,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          // ── Emergency banner — appears INSTANTLY on critical symptom ──
+          if (_hasCritical)
+            EmergencyBanner(
+              message:
+                  'Critical symptom detected — consider contacting your hospital',
+              onCall: () => context.go(AppRoutes.hospital),
+            ),
 
-              Padding(
-                padding: const EdgeInsets.all(24),
+          // ── Blue header ──
+          Container(
+            color: AppColors.primary,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Daily Check-In',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'How are you feeling today?',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Days since surgery counter
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Days Since Surgery',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '$day',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Pain Level Slider
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Pain Level',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '${_painLevel.toInt()}/10',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: _painLevel,
-                      min: 0,
-                      max: 10,
-                      divisions: 10,
-                      activeColor: _painLevel > 7
-                          ? AppColors.emergency
-                          : _painLevel > 4
-                              ? AppColors.warning
-                              : AppColors.success,
-                      label: _painLevel.toInt().toString(),
-                      onChanged: (v) => setState(() => _painLevel = v),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'No pain',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textHint,
-                          ),
-                        ),
-                        Text(
-                          'Severe',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textHint,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Symptoms
-                    const Text(
-                      'Symptoms',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _symptoms.entries.map((entry) {
-                        final isCritical =
-                            _criticalSymptoms.contains(entry.key);
-                        final isSelected = entry.value;
-                        return FilterChip(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(entry.key),
-                              if (isCritical && isSelected) ...[
-                                const SizedBox(width: 4),
-                                const Text('⚠',
-                                    style: TextStyle(fontSize: 12)),
-                              ],
-                            ],
-                          ),
-                          selected: isSelected,
-                          selectedColor: isCritical
-                              ? AppColors.emergencyLight
-                              : AppColors.primaryLight,
-                          checkmarkColor: isCritical
-                              ? AppColors.emergency
-                              : AppColors.primary,
-                          onSelected: (v) {
-                            setState(() => _symptoms[entry.key] = v);
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Mood Selection
-                    const Text(
-                      'How is your mood?',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildMoodButton('😊', 'Good'),
-                        _buildMoodButton('😐', 'Tired'),
-                        _buildMoodButton('😟', 'Anxious'),
-                        _buildMoodButton('😢', 'Low'),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Submit
-                    ElevatedButton(
-                      onPressed: _submitCheckIn,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _hasCriticalSymptoms
-                            ? AppColors.emergency
-                            : AppColors.primary,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _hasCriticalSymptoms
-                                ? 'Submit & Alert Hospital'
-                                : 'Update Recovery Plan',
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward, size: 18),
-                        ],
-                      ),
-                    ),
+                  children: const [
+                    Text('Daily Check-In',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800)),
+                    SizedBox(height: 4),
+                    Text('How are you feeling today?',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 13)),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+
+          // ── Form content ──
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Days since surgery counter ──
+                  const Text('Days Since Surgery',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Minus button — outlined
+                      _counterBtn(Icons.remove,
+                          () => setState(() => _days = (_days - 1).clamp(0, 365))),
+                      const SizedBox(width: 24),
+                      // Day number — large blue
+                      Text('$_days',
+                          style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary)),
+                      const SizedBox(width: 24),
+                      // Plus button — filled blue
+                      _counterBtn(Icons.add,
+                          () => setState(() => _days++),
+                          filled: true),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Pain level slider ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Pain Level',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: AppColors.textPrimary)),
+                      // Color-coded badge (green/amber/red)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                            color: _painColor,
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Text('${_pain.round()}/10',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Slider — color changes with severity
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: _painColor,
+                      inactiveTrackColor: Colors.grey.shade200,
+                      thumbColor: _painColor,
+                      overlayColor: _painColor.withOpacity(0.2),
+                      trackHeight: 4,
+                    ),
+                    child: Slider(
+                      value: _pain,
+                      min: 0,
+                      max: 10,
+                      divisions: 10,
+                      onChanged: (v) => setState(() => _pain = v),
+                    ),
+                  ),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('No pain',
+                          style: TextStyle(
+                              color: AppColors.textHint, fontSize: 11)),
+                      Text('Moderate',
+                          style: TextStyle(
+                              color: AppColors.textHint, fontSize: 11)),
+                      Text('Severe',
+                          style: TextStyle(
+                              color: AppColors.textHint, fontSize: 11)),
+                    ],
+                  ),
+
+                  // Helper tip with orange left border
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF9F0),
+                      borderRadius: BorderRadius.circular(10),
+                      border: const Border(
+                          left: BorderSide(
+                              color: Color(0xFFE65100), width: 3)),
+                    ),
+                    child: const Text(
+                      'If any symptom is severe, the AI may suggest visiting a hospital.',
+                      style: TextStyle(
+                          color: Color(0xFFE65100), fontSize: 12),
+                    ),
+                  ),
+
+                  // ── Symptoms checklist ──
+                  const SizedBox(height: 20),
+                  const Text('Symptoms',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 10),
+
+                  // Critical symptoms — red, with CRITICAL badge
+                  ..._criticalSymptoms
+                      .map((s) => _symptomRow(s, critical: true)),
+
+                  // Normal symptoms — green
+                  ..._normalSymptoms
+                      .map((s) => _symptomRow(s, critical: false)),
+
+                  // ── Mood selector — 4 emoji buttons ──
+                  const SizedBox(height: 20),
+                  const Text('How are you feeling emotionally?',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      {'e': '😊', 'l': 'Good'},
+                      {'e': '😐', 'l': 'Tired'},
+                      {'e': '😟', 'l': 'Anxious'},
+                      {'e': '😢', 'l': 'Low'},
+                    ].map((m) {
+                      final active = _mood == m['l'];
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              setState(() => _mood = m['l']!),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10),
+                            decoration: BoxDecoration(
+                              color: active
+                                  ? AppColors.primaryLight
+                                  : AppColors.background,
+                              border: Border.all(
+                                color: active
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                                width: 1.5,
+                              ),
+                              borderRadius:
+                                  BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(m['e']!,
+                                    style: const TextStyle(
+                                        fontSize: 24)),
+                                const SizedBox(height: 4),
+                                Text(m['l']!,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: active
+                                          ? AppColors.primary
+                                          : AppColors.textHint,
+                                      fontWeight: active
+                                          ? FontWeight.w700
+                                          : FontWeight.w400,
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  // ── Submit button ──
+                  const SizedBox(height: 28),
+                  SalamaButton(
+                    label: _hasCritical
+                        ? 'Submit & Alert Hospital →'
+                        : 'Update Recovery Plan →',
+                    color: _hasCritical
+                        ? AppColors.emergency
+                        : AppColors.primary,
+                    onTap: _submitCheckIn,
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMoodButton(String emoji, String label) {
-    final isSelected = _selectedMood == label;
+  /// Day counter +/− button
+  Widget _counterBtn(IconData icon, VoidCallback onTap,
+      {bool filled = false}) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedMood = label),
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryLight : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          color: filled ? AppColors.primary : Colors.white,
+          border: Border.all(color: AppColors.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon,
+            color: filled ? Colors.white : AppColors.primary,
+            size: 20),
+      ),
+    );
+  }
+
+  /// Symptom checkbox row — red for critical, green for normal.
+  /// Critical symptoms show a "CRITICAL" badge on the right.
+  Widget _symptomRow(String symptom, {required bool critical}) {
+    final checked = _symptoms[symptom] ?? false;
+    final checkColor =
+        critical ? AppColors.emergency : AppColors.success;
+    final bgColor = checked
+        ? (critical
+            ? const Color(0xFFFFF0F0)
+            : AppColors.successLight)
+        : AppColors.background;
+
+    return GestureDetector(
+      onTap: () => setState(() => _symptoms[symptom] = !checked),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 2 : 1,
+            color: checked ? checkColor : Colors.transparent,
           ),
         ),
-        child: Column(
+        child: Row(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
+            // Checkbox
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: checked ? checkColor : Colors.white,
+                border: Border.all(color: checkColor, width: 1.5),
+                borderRadius: BorderRadius.circular(4),
               ),
+              child: checked
+                  ? const Icon(Icons.check,
+                      size: 12, color: Colors.white)
+                  : null,
             ),
+            const SizedBox(width: 10),
+
+            // Symptom name
+            Expanded(
+                child: Text(symptom,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary))),
+
+            // CRITICAL badge for critical symptoms
+            if (critical)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.emergency.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('CRITICAL',
+                    style: TextStyle(
+                        fontSize: 9,
+                        color: AppColors.emergency,
+                        fontWeight: FontWeight.w700)),
+              ),
           ],
         ),
       ),
     );
   }
 
+  /// Submit check-in to Riverpod provider → FastAPI backend
   Future<void> _submitCheckIn() async {
-    final selectedSymptoms =
-        _symptoms.entries.where((e) => e.value).map((e) => e.key).toList();
+    final selectedSymptoms = _symptoms.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
 
+    // Save to Riverpod recovery provider
     ref.read(recoveryProvider.notifier).submitCheckIn(
-      painLevel: _painLevel.toInt(),
-      symptoms: selectedSymptoms,
-      mood: _selectedMood ?? 'Good',
-      hasCriticalSymptoms: _hasCriticalSymptoms,
-    );
+          painLevel: _pain.round(),
+          symptoms: selectedSymptoms,
+          mood: _mood,
+          hasCriticalSymptoms: _hasCritical,
+        );
 
     if (mounted) {
+      // Show feedback
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _hasCriticalSymptoms
+            _hasCritical
                 ? 'Alert sent to your hospital team'
                 : 'Check-in submitted successfully',
           ),
           backgroundColor:
-              _hasCriticalSymptoms ? AppColors.emergency : AppColors.success,
+              _hasCritical ? AppColors.emergency : AppColors.success,
         ),
       );
+
+      // Navigate to dashboard
+      context.go(AppRoutes.dashboard);
     }
   }
 }
