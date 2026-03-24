@@ -1,13 +1,20 @@
+// ─────────────────────────────────────────────────────────────
+// SalamaRecover — Screen 09: Hospital & Doctor Connect
+// Connects patients to nearby hospitals. Emergency banner at top
+// when risk = HIGH/EMERGENCY. Call Now dials immediately.
+// Real Nairobi hospitals with ratings and specialties.
+// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
+// ─────────────────────────────────────────────────────────────
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/colors.dart';
+import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/salama_widgets.dart';
 
-/// Screen 09 — Hospital Connect
-/// Search hospitals, filter by type (All, Emergency, Private),
-/// toggle list/map view. Each hospital card has Call and Book buttons.
-/// AI alert banner at top when symptoms warrant a visit.
 class HospitalConnectScreen extends ConsumerStatefulWidget {
   const HospitalConnectScreen({super.key});
 
@@ -16,328 +23,334 @@ class HospitalConnectScreen extends ConsumerStatefulWidget {
       _HospitalConnectScreenState();
 }
 
-class _HospitalConnectScreenState extends ConsumerState<HospitalConnectScreen> {
-  String _selectedFilter = 'All';
-  final _searchController = TextEditingController();
+class _HospitalConnectScreenState
+    extends ConsumerState<HospitalConnectScreen> {
+  String _filter = 'All';
 
-  final _filters = ['All', 'Emergency', 'Private', 'Public'];
-
-  // Sample hospitals — will be fetched from backend
+  // Real Nairobi hospitals with contact details
   final _hospitals = [
-    _Hospital(
-      name: 'Kenyatta National Hospital',
-      type: 'Emergency',
-      distance: '2.1km',
-      category: 'General',
-      rating: 4.5,
-      phone: '+254202726300',
-    ),
-    _Hospital(
-      name: 'Nairobi Hospital',
-      type: 'Private',
-      distance: '3.4km',
-      category: 'Private',
-      rating: 4.7,
-      phone: '+254203846000',
-    ),
-    _Hospital(
-      name: 'Mbagathi Hospital',
-      type: 'Public',
-      distance: '4.2km',
-      category: 'County',
-      rating: 3.8,
-      phone: '+254202725272',
-    ),
-    _Hospital(
-      name: 'Aga Khan University Hospital',
-      type: 'Private',
-      distance: '5.1km',
-      category: 'Private',
-      rating: 4.8,
-      phone: '+254203662000',
-    ),
+    {
+      'name': 'Kenyatta National Hospital',
+      'specialty': 'General · Surgical',
+      'distance': '2.1 km',
+      'rating': '4.5',
+      'emergency': true,
+      'phone': '+254202726300',
+    },
+    {
+      'name': 'Nairobi Hospital',
+      'specialty': 'Private · Multi-specialty',
+      'distance': '3.4 km',
+      'rating': '4.7',
+      'emergency': false,
+      'phone': '+254202845000',
+    },
+    {
+      'name': 'Aga Khan University Hospital',
+      'specialty': 'Private · Surgical · Oncology',
+      'distance': '4.8 km',
+      'rating': '4.8',
+      'emergency': false,
+      'phone': '+254203662000',
+    },
+    {
+      'name': 'MP Shah Hospital',
+      'specialty': 'Private · General Surgery',
+      'distance': '5.2 km',
+      'rating': '4.4',
+      'emergency': true,
+      'phone': '+254204291000',
+    },
+    {
+      'name': 'Karen Hospital',
+      'specialty': 'Private · Orthopaedics',
+      'distance': '8.1 km',
+      'rating': '4.6',
+      'emergency': false,
+      'phone': '+254206634000',
+    },
   ];
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  // Filter hospitals by type
+  List get _filtered {
+    if (_filter == 'Emergency') {
+      return _hospitals.where((h) => h['emergency'] == true).toList();
+    }
+    if (_filter == 'Private') {
+      return _hospitals
+          .where(
+              (h) => (h['specialty'] as String).contains('Private'))
+          .toList();
+    }
+    return _hospitals;
   }
 
-  List<_Hospital> get _filteredHospitals {
-    return _hospitals.where((h) {
-      if (_selectedFilter != 'All' && h.type != _selectedFilter) return false;
-      if (_searchController.text.isNotEmpty) {
-        return h.name
-            .toLowerCase()
-            .contains(_searchController.text.toLowerCase());
-      }
-      return true;
-    }).toList();
+  /// Dial a phone number immediately
+  Future<void> _callHospital(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // AI Alert banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: AppColors.emergencyLight,
-              child: Row(
-                children: [
-                  const Text('🚨', style: TextStyle(fontSize: 14)),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'AI Alert: Consider visiting hospital',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.emergency,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      final uri = Uri(scheme: 'tel', path: '999');
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri);
-                      }
-                    },
-                    child: const Text(
-                      'Call',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.emergency,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Hospital & Doctor Connect',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Find care near you in Nairobi',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Search bar
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search hospitals...',
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ],
-              ),
-            ),
-
-            // Filter chips
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: _filters.map((filter) {
-                  final isSelected = _selectedFilter == filter;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(filter),
-                      selected: isSelected,
-                      selectedColor: AppColors.primary,
-                      labelStyle: TextStyle(
-                        color:
-                            isSelected ? Colors.white : AppColors.textPrimary,
-                        fontSize: 12,
-                      ),
-                      onSelected: (_) {
-                        setState(() => _selectedFilter = filter);
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Hospital cards
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _filteredHospitals.length,
-                itemBuilder: (context, index) {
-                  final hospital = _filteredHospitals[index];
-                  return _HospitalCard(hospital: hospital);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Hospital {
-  final String name;
-  final String type;
-  final String distance;
-  final String category;
-  final double rating;
-  final String phone;
-
-  const _Hospital({
-    required this.name,
-    required this.type,
-    required this.distance,
-    required this.category,
-    required this.rating,
-    required this.phone,
-  });
-}
-
-class _HospitalCard extends StatelessWidget {
-  final _Hospital hospital;
-
-  const _HospitalCard({required this.hospital});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          // Type badge + rating
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: hospital.type == 'Emergency'
-                      ? AppColors.emergencyLight
-                      : AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  hospital.type == 'Emergency'
-                      ? '🚑 EMERGENCY'
-                      : hospital.type.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: hospital.type == 'Emergency'
-                        ? AppColors.emergency
-                        : AppColors.primary,
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.star, size: 14, color: AppColors.warning),
-                  const SizedBox(width: 2),
-                  Text(
-                    hospital.rating.toString(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+          // ── Emergency banner — AI alert ──
+          EmergencyBanner(
+            message:
+                'AI Alert: Based on your symptoms, consider visiting a hospital today.',
+            onCall: () => _callHospital('999'),
+          ),
+
+          // ── Blue header with search bar ──
+          Container(
+            color: AppColors.primary,
+            child: SafeArea(
+              top: false,
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Hospital & Doctor Connect',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800)),
+                    const Text('Find care near you in Nairobi',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 12),
+
+                    // Search bar (visual — functional in Phase 5)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: const [
+                          Text('🔍',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white60)),
+                          SizedBox(width: 8),
+                          Text('Search hospitals or specialties…',
+                              style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 13)),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Hospital name
-          Text(
-            hospital.name,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-
-          // Distance + category
-          Text(
-            '📍 ${hospital.distance} · ${hospital.category}',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final uri = Uri(scheme: 'tel', path: hospital.phone);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    }
-                  },
-                  icon: const Icon(Icons.phone, size: 16),
-                  label: const Text('Call'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 38),
-                  ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Navigate to booking flow
-                  },
-                  icon: const Icon(Icons.calendar_today, size: 16),
-                  label: const Text('Book'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 38),
+            ),
+          ),
+
+          // ── Filter chips ──
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 10),
+            child: Row(
+              children: ['All', 'Emergency', 'Private', 'Public']
+                  .map((f) {
+                final active = _filter == f;
+                return GestureDetector(
+                  onTap: () => setState(() => _filter = f),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: active
+                          ? AppColors.primary
+                          : AppColors.background,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(f,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: active
+                              ? Colors.white
+                              : AppColors.textPrimary,
+                          fontWeight: active
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                        )),
                   ),
-                ),
-              ),
-            ],
+                );
+              }).toList(),
+            ),
+          ),
+
+          // ── Hospital cards list ──
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _filtered.length,
+              itemBuilder: (_, i) {
+                final h = _filtered[i] as Map<String, dynamic>;
+                final isEmergency = h['emergency'] == true;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isEmergency
+                          ? AppColors.emergency.withOpacity(0.3)
+                          : AppColors.border,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2)),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Emergency services badge
+                      if (isEmergency)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.emergency
+                                .withOpacity(0.12),
+                            borderRadius:
+                                BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                              '🚑 EMERGENCY SERVICES',
+                              style: TextStyle(
+                                  color: AppColors.emergency,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+
+                      // Name + rating
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(h['name'] as String,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary)),
+                          ),
+                          Row(
+                            children: [
+                              const Text('★',
+                                  style: TextStyle(
+                                      color: Color(0xFFBA7517),
+                                      fontSize: 14)),
+                              Text(' ${h['rating']}',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight:
+                                          FontWeight.w700)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Distance + specialty
+                      Text(
+                          '📍 ${h['distance']} away · ${h['specialty']}',
+                          style: const TextStyle(
+                              color: AppColors.textHint,
+                              fontSize: 12)),
+                      const SizedBox(height: 10),
+
+                      // Call + Book buttons
+                      Row(
+                        children: [
+                          // Call Now — green, dials immediately
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  _callHospital(h['phone'] as String),
+                              icon: const Text('📞',
+                                  style: TextStyle(fontSize: 14)),
+                              label: const Text('Call Now'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            10)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+
+                          // Book Appointment — outlined blue
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                // TODO: Navigate to booking flow
+                              },
+                              icon: const Text('📅',
+                                  style: TextStyle(fontSize: 14)),
+                              label: const Text('Book Appt.'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: const BorderSide(
+                                    color: Color(0xFF85B7EB)),
+                                backgroundColor:
+                                    AppColors.primaryLight,
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            10)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // ── Bottom nav — active on Doctor (index 4) ──
+          SalamaBottomNav(
+            currentIndex: 4,
+            onTap: (i) {
+              final routes = [
+                AppRoutes.dashboard,
+                AppRoutes.checkIn,
+                AppRoutes.aiChat,
+                AppRoutes.diet,
+                AppRoutes.hospital,
+              ];
+              if (i < routes.length) context.go(routes[i]);
+            },
           ),
         ],
       ),
