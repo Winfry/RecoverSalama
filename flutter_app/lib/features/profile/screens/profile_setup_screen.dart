@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/salama_widgets.dart';
+import '../../recovery/providers/recovery_provider.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
@@ -36,6 +37,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _allergiesCtrl = TextEditingController();
   final _caregiverCtrl = TextEditingController();
   final _weightCtrl = TextEditingController();
+
+  bool _isSaving = false;
 
   // Allergy toggles — from Kenya Nutrition Manual p.77
   final Map<String, bool> _allergyToggles = {
@@ -401,27 +404,64 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
-  // ── Save profile via Riverpod and navigate ────────────────
+  // ── Save profile to Supabase via backend, then store locally ──
   Future<void> _completeSetup() async {
-    ref.read(profileProvider.notifier).saveProfile(
-          name: _nameCtrl.text,
-          age: int.tryParse(_ageCtrl.text) ?? 0,
-          gender: _gender,
-          surgeryType: _surgery,
-          surgeryDate: _surgeryDate,
-          hospital: '',
-          surgeon: '',
-          weight: double.tryParse(_weightCtrl.text) ?? 0,
-          bloodType: '',
-          allergies: _allergyToggles.entries
-              .where((e) => e.value)
-              .map((e) => e.key)
-              .toList(),
-          otherAllergies: _allergiesCtrl.text,
-        );
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
 
-    if (mounted) {
+    final allergies = _allergyToggles.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    try {
+      // POST to /api/patients/profile — creates the patient row in Supabase
+      await ref.read(apiServiceProvider).saveProfile({
+        'name': _nameCtrl.text.trim(),
+        'age': int.tryParse(_ageCtrl.text) ?? 0,
+        'gender': _gender,
+        'surgery_type': _surgery,
+        'surgery_date': _surgeryDate != null
+            ? '${_surgeryDate!.year.toString().padLeft(4, '0')}-'
+              '${_surgeryDate!.month.toString().padLeft(2, '0')}-'
+              '${_surgeryDate!.day.toString().padLeft(2, '0')}'
+            : null,
+        'weight': double.tryParse(_weightCtrl.text) ?? 0,
+        'allergies': allergies,
+        'other_allergies': _allergiesCtrl.text.trim(),
+      });
+
+      // Mirror into Riverpod so the rest of the app can read it instantly
+      ref.read(profileProvider.notifier).saveProfile(
+            name: _nameCtrl.text.trim(),
+            age: int.tryParse(_ageCtrl.text) ?? 0,
+            gender: _gender,
+            surgeryType: _surgery,
+            surgeryDate: _surgeryDate,
+            hospital: '',
+            surgeon: '',
+            weight: double.tryParse(_weightCtrl.text) ?? 0,
+            bloodType: '',
+            allergies: allergies,
+            otherAllergies: _allergiesCtrl.text.trim(),
+          );
+
+      if (!mounted) return;
       context.go(AppRoutes.preSurgery);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().contains('SocketException') ||
+                    e.toString().contains('connection')
+                ? 'No internet. Check your network and try again.'
+                : 'Could not save profile. Please try again.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -450,17 +490,19 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   SalamaButton(
                     label: _step < 3
                         ? 'Save & Continue →'
-                        : 'Finish Setup ✓',
+                        : (_isSaving ? 'Saving…' : 'Finish Setup ✓'),
                     color: _step == 3
                         ? AppColors.success
                         : AppColors.primary,
-                    onTap: () {
-                      if (_step < 3) {
-                        setState(() => _step++);
-                      } else {
-                        _completeSetup();
-                      }
-                    },
+                    onTap: (_step == 3 && _isSaving)
+                        ? null
+                        : () {
+                            if (_step < 3) {
+                              setState(() => _step++);
+                            } else {
+                              _completeSetup();
+                            }
+                          },
                   ),
                 ],
               ),

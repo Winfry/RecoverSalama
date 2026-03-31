@@ -50,10 +50,14 @@ class ApiService {
   Future<Response> sendChatMessage({
     required String message,
     String language = 'en',
+    String surgeryType = '',
+    int daysSinceSurgery = 0,
   }) async {
-    return _dio.post('/api/chat', data: {
+    return _dio.post('/api/chat/', data: {
       'message': message,
       'language': language,
+      'surgery_type': surgeryType,
+      'days_since_surgery': daysSinceSurgery,
     });
   }
 
