@@ -10,7 +10,7 @@ This is how SalamaRecover prevents complications —
 catching warning signs before they become emergencies.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.database import get_supabase_client
 
@@ -33,6 +33,12 @@ async def list_alerts(hospital_id: str | None = None, status: str = "active"):
 @router.patch("/{alert_id}")
 async def update_alert(alert_id: str, status: str):
     """Mark alert as acknowledged or resolved by hospital staff."""
+    if status not in ("acknowledged", "resolved"):
+        raise HTTPException(
+            status_code=400,
+            detail="Status must be 'acknowledged' or 'resolved'",
+        )
+
     db = get_supabase_client()
     result = (
         db.table("alerts")
@@ -40,4 +46,8 @@ async def update_alert(alert_id: str, status: str):
         .eq("id", alert_id)
         .execute()
     )
-    return result.data[0] if result.data else {"error": "Alert not found"}
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    return result.data[0]

@@ -36,11 +36,13 @@ class ApiService {
     required int painLevel,
     required List<String> symptoms,
     required String mood,
+    required int daysSinceSurgery,
   }) async {
     return _dio.post('/api/recovery/checkin', data: {
       'pain_level': painLevel,
       'symptoms': symptoms,
       'mood': mood,
+      'days_since_surgery': daysSinceSurgery,
     });
   }
 

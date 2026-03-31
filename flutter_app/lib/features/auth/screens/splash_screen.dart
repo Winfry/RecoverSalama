@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
@@ -35,10 +36,15 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate to landing after 3 seconds
+    // Check auth session after splash animation, route accordingly
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        context.go(AppRoutes.landing);
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user != null) {
+          context.go(AppRoutes.dashboard); // returning user — skip login
+        } else {
+          context.go(AppRoutes.landing);   // new user — show landing
+        }
       }
     });
   }
@@ -232,19 +238,3 @@ class _HeartCrossLogoPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Helper widget to animate loading dots
-class AnimatedBuilder extends StatelessWidget {
-  final Animation<double> animation;
-  final Widget Function(BuildContext context, Widget? child) builder;
-
-  const AnimatedBuilder({
-    super.key,
-    required this.animation,
-    required this.builder,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(animation: animation, builder: builder);
-  }
-}
