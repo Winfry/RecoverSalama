@@ -41,7 +41,6 @@ dependencies:
 
   # Notifications
   flutter_local_notifications: ^17.2.2
-  firebase_messaging: ^14.9.4
 
   # Utilities
   url_launcher: ^6.3.0

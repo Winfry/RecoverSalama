@@ -44,15 +44,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final authRepo = ref.read(authRepositoryProvider);
-      final phone = '+254${_phoneController.text.trim()}';
+      final phone = _phoneController.text.trim();
 
       if (_isLogin) {
-        // Returning user — sign in and go straight to dashboard
         final response = await authRepo.signInWithPhone(
           phone: phone,
           password: _passwordController.text,
         );
-
         if (response.session != null) {
           await _storage.write(
             key: 'access_token',
@@ -62,13 +60,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context.go(AppRoutes.dashboard);
         }
       } else {
-        // New user — sign up and go to profile setup
         final response = await authRepo.signUpWithPhone(
           phone: phone,
           password: _passwordController.text,
           fullName: _nameController.text.trim(),
         );
-
         if (response.session != null) {
           await _storage.write(
             key: 'access_token',
