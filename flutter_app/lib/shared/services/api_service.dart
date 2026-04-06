@@ -36,11 +36,13 @@ class ApiService {
     required int painLevel,
     required List<String> symptoms,
     required String mood,
+    required int daysSinceSurgery,
   }) async {
     return _dio.post('/api/recovery/checkin', data: {
       'pain_level': painLevel,
       'symptoms': symptoms,
       'mood': mood,
+      'days_since_surgery': daysSinceSurgery,
     });
   }
 
@@ -48,10 +50,14 @@ class ApiService {
   Future<Response> sendChatMessage({
     required String message,
     String language = 'en',
+    String surgeryType = '',
+    int daysSinceSurgery = 0,
   }) async {
-    return _dio.post('/api/chat', data: {
+    return _dio.post('/api/chat/', data: {
       'message': message,
       'language': language,
+      'surgery_type': surgeryType,
+      'days_since_surgery': daysSinceSurgery,
     });
   }
 

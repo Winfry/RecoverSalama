@@ -234,7 +234,9 @@ class DashboardScreen extends ConsumerWidget {
                                       fontSize: 13)),
                               const SizedBox(height: 4),
                               Text(
-                                recovery.aiTip,
+                                recovery.aiTip.isNotEmpty
+                                    ? recovery.aiTip
+                                    : _defaultTip(day),
                                 style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textPrimary,
@@ -448,5 +450,27 @@ class DashboardScreen extends ConsumerWidget {
       '🫙 Soup',
       '💧 2.5L Water',
     ];
+  }
+
+  // ── Default tip shown before first check-in is submitted ──
+  String _defaultTip(int day) {
+    if (day <= 2) {
+      return 'Rest is the best medicine right now. Sip water regularly '
+          'and take your prescribed pain medication on schedule.';
+    }
+    if (day <= 7) {
+      return 'Short 5-minute walks improve blood flow and speed healing. '
+          'Avoid lifting anything heavier than a phone.';
+    }
+    if (day <= 14) {
+      return 'Your wound is closing well. Keep it clean and dry. '
+          'Eat protein-rich foods like eggs and beans to support tissue repair.';
+    }
+    if (day <= 30) {
+      return 'Strength returns slowly — don\'t rush it. Eat balanced meals '
+          'with sukuma wiki and lean protein. Stay well hydrated.';
+    }
+    return 'You are in the final stretch of recovery. Listen to your body '
+        'and resume activities gradually. Congratulations on your progress!';
   }
 }

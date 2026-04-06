@@ -114,6 +114,12 @@ ml/data/synthetic/*.csv
 .ipynb_checkpoints/
 
 # ===========================
+# Dev Tools (local only)
+# ===========================
+ngrok.exe
+ngrok
+
+# ===========================
 # Misc
 # ===========================
 *.log

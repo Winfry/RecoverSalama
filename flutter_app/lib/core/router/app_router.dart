@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/landing_screen.dart';
+import '../../features/auth/screens/login_screen.dart';
 import '../../features/profile/screens/profile_setup_screen.dart';
 import '../../features/pre_surgery/screens/pre_surgery_screen.dart';
 import '../../features/recovery/screens/dashboard_screen.dart';
@@ -21,6 +24,7 @@ class AppRoutes {
 
   static const String splash = '/';
   static const String landing = '/landing';
+  static const String login = '/login';
   static const String profileSetup = '/profile-setup';
   static const String preSurgery = '/pre-surgery';
   static const String dashboard = '/dashboard';
@@ -32,9 +36,62 @@ class AppRoutes {
   static const String settings = '/settings';
 }
 
+/// Routes that require an authenticated session
+const _protectedRoutes = {
+  AppRoutes.dashboard,
+  AppRoutes.checkIn,
+  AppRoutes.aiChat,
+  AppRoutes.diet,
+  AppRoutes.hospital,
+  AppRoutes.mentalHealth,
+  AppRoutes.settings,
+  AppRoutes.profileSetup,
+  AppRoutes.preSurgery,
+};
+
+/// Notifies GoRouter to re-run redirect whenever the Supabase auth
+/// stream emits (login, logout, token refresh, etc.)
+class _GoRouterRefreshStream extends ChangeNotifier {
+  late final StreamSubscription<dynamic> _subscription;
+
+  _GoRouterRefreshStream(Stream<dynamic> stream) {
+    _subscription = stream.listen((_) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final refreshListenable = _GoRouterRefreshStream(
+    Supabase.instance.client.auth.onAuthStateChange,
+  );
+  ref.onDispose(refreshListenable.dispose);
+
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    refreshListenable: refreshListenable,
+    redirect: (context, state) {
+      final isAuthenticated =
+          Supabase.instance.client.auth.currentUser != null;
+      final location = state.matchedLocation;
+
+      // Unauthenticated user trying to reach a protected screen → landing
+      if (!isAuthenticated && _protectedRoutes.contains(location)) {
+        return AppRoutes.landing;
+      }
+
+      // Authenticated user on landing or login → skip straight to dashboard
+      if (isAuthenticated &&
+          (location == AppRoutes.landing || location == AppRoutes.login)) {
+        return AppRoutes.dashboard;
+      }
+
+      return null; // No redirect needed
+    },
     routes: [
       // Splash — no bottom nav
       GoRoute(
@@ -46,6 +103,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.landing,
         builder: (context, state) => const LandingScreen(),
+      ),
+
+      // Login — no bottom nav
+      GoRoute(
+        path: AppRoutes.login,
+        builder: (context, state) => const LoginScreen(),
       ),
 
       // Profile Setup — no bottom nav

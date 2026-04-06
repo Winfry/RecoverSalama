@@ -161,7 +161,7 @@ class _LandingScreenState extends State<LandingScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () =>
-                            context.go(AppRoutes.profileSetup),
+                            context.go(AppRoutes.login),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.primary,
@@ -271,29 +271,6 @@ class _LandingScreenState extends State<LandingScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textHint, fontSize: 10),
             ),
-          ),
-
-          // ── BOTTOM NAV ────────────────────────────────────
-          SalamaBottomNav(
-            currentIndex: 0,
-            onTap: (index) {
-              switch (index) {
-                case 0:
-                  break; // Already here
-                case 1:
-                  context.go(AppRoutes.checkIn);
-                  break;
-                case 2:
-                  context.go(AppRoutes.aiChat);
-                  break;
-                case 3:
-                  context.go(AppRoutes.diet);
-                  break;
-                case 4:
-                  context.go(AppRoutes.hospital);
-                  break;
-              }
-            },
           ),
         ],
       ),

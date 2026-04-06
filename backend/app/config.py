@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://localhost:8080",  # Flutter web dev
+        "http://10.0.2.2:8000",  # Android emulator -> host
     ]
 
     class Config:

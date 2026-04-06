@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/salama_widgets.dart';
+import '../../profile/providers/profile_provider.dart';
 import '../providers/chat_provider.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -65,8 +66,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       setState(() => _showDoctorCta = true);
     }
 
-    // Send via Riverpod provider → will call backend API in Phase 1
-    ref.read(chatProvider.notifier).sendMessage(text.trim());
+    // Pass patient context so Gemini can give surgery-specific answers
+    final profile = ref.read(profileProvider);
+    ref.read(chatProvider.notifier).sendMessage(
+          text.trim(),
+          surgeryType: profile.surgeryType,
+          daysSinceSurgery: profile.daysSinceSurgery,
+        );
     _messageCtrl.clear();
 
     // Scroll to bottom
@@ -83,7 +89,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = ref.watch(chatProvider);
+    final chatState = ref.watch(chatProvider);
+    final messages = chatState.messages;
+    final isTyping = chatState.isTyping;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -192,10 +200,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               controller: _scrollCtrl,
               padding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 12),
-              itemCount: messages.length,
+              itemCount: messages.length + (isTyping ? 1 : 0),
               itemBuilder: (context, index) {
-                final msg = messages[index];
-                return _ChatBubble(message: msg);
+                // Last item when AI is typing — show typing indicator
+                if (isTyping && index == messages.length) {
+                  return const _TypingIndicator();
+                }
+                return _ChatBubble(message: messages[index]);
               },
             ),
           ),
@@ -283,18 +294,32 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   ),
                   const SizedBox(width: 8),
 
-                  // Send button — amber circle
+                  // Send button — disabled while AI is typing
                   GestureDetector(
-                    onTap: () => _sendMessage(_messageCtrl.text),
+                    onTap: isTyping
+                        ? null
+                        : () => _sendMessage(_messageCtrl.text),
                     child: Container(
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: AppColors.warning,
+                        color: isTyping
+                            ? AppColors.textHint
+                            : AppColors.warning,
                         borderRadius: BorderRadius.circular(21),
                       ),
-                      child: const Icon(Icons.send,
-                          color: Colors.white, size: 18),
+                      child: isTyping
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: Padding(
+                                padding: EdgeInsets.all(11),
+                                child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2),
+                              ))
+                          : const Icon(Icons.send,
+                              color: Colors.white, size: 18),
                     ),
                   ),
                 ],
@@ -315,6 +340,95 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               ];
               if (i < routes.length) context.go(routes[i]);
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Typing indicator — three animated dots shown while AI is processing
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // AI avatar
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.successLight,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+                child: Text('🤖', style: TextStyle(fontSize: 14))),
+          ),
+          const SizedBox(width: 6),
+          // Typing bubble
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.successLight,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(2),
+                bottomRight: Radius.circular(16),
+              ),
+              border:
+                  Border.all(color: AppColors.success.withOpacity(0.15)),
+            ),
+            child: AnimatedBuilder(
+              animation: _ctrl,
+              builder: (_, __) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (i) {
+                    final opacity =
+                        ((_ctrl.value * 3 - i) % 3 / 3).clamp(0.2, 1.0);
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.success.withOpacity(opacity),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
           ),
         ],
       ),

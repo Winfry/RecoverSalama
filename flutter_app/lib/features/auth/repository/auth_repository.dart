@@ -5,39 +5,40 @@ class AuthRepository {
 
   AuthRepository(this._client);
 
-  /// Sign up with phone number
+  /// Convert a Kenyan phone number to a deterministic fake email.
+  /// Users only ever see/enter their phone number — the email is internal only.
+  String _phoneToEmail(String phone) {
+    // Normalise: strip spaces, leading 0, ensure +254 prefix
+    final digits = phone.replaceAll(RegExp(r'\s+'), '');
+    final normalised = digits.startsWith('+')
+        ? digits.replaceAll('+', '')
+        : digits.startsWith('0')
+            ? '254${digits.substring(1)}'
+            : '254$digits';
+    return '$normalised@salamarecover.app';
+  }
+
+  /// Sign up with phone number (email auth under the hood)
   Future<AuthResponse> signUpWithPhone({
     required String phone,
     required String password,
     required String fullName,
   }) async {
     return await _client.auth.signUp(
-      phone: phone,
+      email: _phoneToEmail(phone),
       password: password,
-      data: {'full_name': fullName},
+      data: {'full_name': fullName, 'phone': phone},
     );
   }
 
-  /// Sign in with phone number
+  /// Sign in with phone number (email auth under the hood)
   Future<AuthResponse> signInWithPhone({
     required String phone,
     required String password,
   }) async {
     return await _client.auth.signInWithPassword(
-      phone: phone,
+      email: _phoneToEmail(phone),
       password: password,
-    );
-  }
-
-  /// Verify OTP
-  Future<AuthResponse> verifyOTP({
-    required String phone,
-    required String token,
-  }) async {
-    return await _client.auth.verifyOTP(
-      phone: phone,
-      token: token,
-      type: OtpType.sms,
     );
   }
 

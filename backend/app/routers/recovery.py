@@ -1,5 +1,5 @@
 """
-Recovery routes — daily check-ins, diet plans, mood tracking.
+Recovery routes — daily check-ins, diet plans, mood tracking, dashboard.
 
 This is where the core recovery logic lives:
 1. Patient submits daily check-in (pain, symptoms, mood) from Flutter Screen 04
@@ -11,10 +11,20 @@ Diet endpoint returns surgery-specific meal plans from the Kenya
 Nutrition Manual, filtered by the patient's allergies.
 """
 
-from fastapi import APIRouter, HTTPException
+from datetime import date
 
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.auth import get_current_user, get_patient_id
 from app.database import get_supabase_client
-from app.schemas.recovery import CheckInRequest, CheckInResponse, DietResponse
+from app.schemas.recovery import (
+    CheckInRequest,
+    CheckInResponse,
+    DietResponse,
+    DashboardResponse,
+    MoodRequest,
+    MoodResponse,
+)
 from app.services.ml.risk_scorer import RiskScorer
 from app.services.ml.diet_engine import DietEngine
 
@@ -24,7 +34,10 @@ diet_engine = DietEngine()
 
 
 @router.post("/checkin", response_model=CheckInResponse)
-async def submit_checkin(checkin: CheckInRequest):
+async def submit_checkin(
+    checkin: CheckInRequest,
+    patient_id: str = Depends(get_patient_id),
+):
     """
     Daily check-in from Flutter app.
     1. Save check-in data to Supabase
@@ -34,17 +47,24 @@ async def submit_checkin(checkin: CheckInRequest):
     """
     db = get_supabase_client()
 
-    # Score risk using ML model
-    risk_level = risk_scorer.predict(
+    # Score risk using two-layer system (rules + Gemini)
+    risk_result = await risk_scorer.assess_risk(
         pain_level=checkin.pain_level,
         symptoms=checkin.symptoms,
         mood=checkin.mood,
         days_since_surgery=checkin.days_since_surgery,
     )
 
+    risk_level = risk_result.get("risk_level", risk_scorer.predict(
+        pain_level=checkin.pain_level,
+        symptoms=checkin.symptoms,
+        mood=checkin.mood,
+        days_since_surgery=checkin.days_since_surgery,
+    ))
+
     # Save to database
     record = {
-        "patient_id": checkin.patient_id,
+        "patient_id": patient_id,
         "pain_level": checkin.pain_level,
         "symptoms": checkin.symptoms,
         "mood": checkin.mood,
@@ -53,10 +73,14 @@ async def submit_checkin(checkin: CheckInRequest):
     }
     db.table("recovery_logs").insert(record).execute()
 
-    # Trigger alert if critical
+    # Look up patient's hospital_id for the alert
     if risk_level in ("HIGH", "EMERGENCY"):
+        patient = db.table("patients").select("hospital_id").eq("id", patient_id).execute()
+        hospital_id = patient.data[0].get("hospital_id") if patient.data else None
+
         db.table("alerts").insert({
-            "patient_id": checkin.patient_id,
+            "patient_id": patient_id,
+            "hospital_id": hospital_id,
             "risk_level": risk_level,
             "symptoms": checkin.symptoms,
             "message": f"Patient reported {risk_level} risk symptoms",
@@ -65,7 +89,83 @@ async def submit_checkin(checkin: CheckInRequest):
     return CheckInResponse(
         risk_level=risk_level,
         message=_get_risk_message(risk_level),
+        reasoning=risk_result.get("reasoning", ""),
+        recommendation=risk_result.get("recommendation", _get_risk_message(risk_level)),
     )
+
+
+@router.get("/dashboard", response_model=DashboardResponse)
+async def get_dashboard(patient_id: str = Depends(get_patient_id)):
+    """
+    Dashboard data for Flutter Screen 05.
+    Returns recovery stage, activities, AI tip, and latest check-in.
+    """
+    db = get_supabase_client()
+
+    # Get patient info
+    patient = db.table("patients").select("*").eq("id", patient_id).execute()
+    if not patient.data:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    p = patient.data[0]
+    surgery_date = p.get("surgery_date")
+
+    # Calculate days since surgery
+    if surgery_date:
+        days = (date.today() - date.fromisoformat(surgery_date)).days
+    else:
+        days = 0
+
+    # Get latest check-in
+    latest_log = (
+        db.table("recovery_logs")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    latest_checkin = latest_log.data[0] if latest_log.data else None
+    risk_level = latest_checkin.get("risk_level", "LOW") if latest_checkin else "LOW"
+
+    # Determine recovery stage
+    stage = _get_recovery_stage(days)
+
+    return DashboardResponse(
+        patient_name=p.get("name", ""),
+        surgery_type=p.get("surgery_type", ""),
+        surgery_date=surgery_date or "",
+        days_since_surgery=days,
+        recovery_day=days,
+        total_recovery_days=42,
+        stage_name=stage["name"],
+        stage_description=stage["description"],
+        allowed_activities=stage["allowed"],
+        restricted_activities=stage["restricted"],
+        risk_level=risk_level,
+        ai_tip=_get_ai_tip(days, p.get("surgery_type", "")),
+        latest_pain=latest_checkin.get("pain_level", 0) if latest_checkin else 0,
+        latest_mood=latest_checkin.get("mood", "") if latest_checkin else "",
+    )
+
+
+@router.get("/history")
+async def get_history(
+    patient_id: str = Depends(get_patient_id),
+    limit: int = 14,
+):
+    """Get recent check-in history for the patient."""
+    db = get_supabase_client()
+    result = (
+        db.table("recovery_logs")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return result.data
 
 
 @router.get("/diet", response_model=DietResponse)
@@ -90,17 +190,26 @@ async def get_diet_plan(
     return plan
 
 
-@router.post("/mood")
-async def submit_mood(patient_id: str, mood: str, notes: str | None = None):
+@router.post("/mood", response_model=MoodResponse)
+async def submit_mood(
+    mood_data: MoodRequest,
+    patient_id: str = Depends(get_patient_id),
+):
     """Save mental health check-in from Flutter Screen 07."""
     db = get_supabase_client()
     db.table("mood_logs").insert({
         "patient_id": patient_id,
-        "mood": mood,
-        "notes": notes,
+        "mood": mood_data.mood,
+        "notes": mood_data.notes,
     }).execute()
-    return {"status": "saved"}
 
+    return MoodResponse(
+        status="saved",
+        support_message=_get_mood_support(mood_data.mood),
+    )
+
+
+# ── Helper functions ──────────────────────────────────────────
 
 def _get_risk_message(risk_level: str) -> str:
     messages = {
@@ -110,3 +219,57 @@ def _get_risk_message(risk_level: str) -> str:
         "EMERGENCY": "Seek immediate medical help. Call 999 or go to the nearest hospital.",
     }
     return messages.get(risk_level, "Check-in recorded.")
+
+
+def _get_recovery_stage(days: int) -> dict:
+    if days <= 3:
+        return {
+            "name": "Stage 1 — Acute Recovery",
+            "description": "Your body is in the critical healing phase. Rest is essential.",
+            "allowed": ["Gentle walking to bathroom", "Deep breathing exercises", "Light stretching in bed"],
+            "restricted": ["Lifting anything heavy", "Driving", "Strenuous exercise", "Bending at waist"],
+        }
+    elif days <= 14:
+        return {
+            "name": "Stage 2 — Early Healing",
+            "description": "Wound healing is underway. Gradually increase light activity.",
+            "allowed": ["Short walks (10-15 min)", "Light household tasks", "Reading and gentle stretching"],
+            "restricted": ["Lifting over 5kg", "Running or jogging", "Swimming", "Sexual activity"],
+        }
+    elif days <= 30:
+        return {
+            "name": "Stage 3 — Progressive Recovery",
+            "description": "Strength is returning. You can do more, but listen to your body.",
+            "allowed": ["Longer walks (30 min)", "Light cooking", "Return to desk work", "Gentle yoga"],
+            "restricted": ["Heavy lifting", "Contact sports", "High-intensity exercise"],
+        }
+    else:
+        return {
+            "name": "Stage 4 — Full Recovery",
+            "description": "Most activities can be resumed. Follow up with your surgeon.",
+            "allowed": ["Most normal activities", "Moderate exercise", "Driving (if comfortable)", "Return to work"],
+            "restricted": ["Extreme sports (check with doctor)", "Very heavy lifting"],
+        }
+
+
+def _get_ai_tip(days: int, surgery_type: str) -> str:
+    if days <= 3:
+        return "Focus on hydration and rest. Drink at least 8 glasses of water today. Your body is using extra energy to heal."
+    elif days <= 7:
+        return "Try a 10-minute walk today. Movement helps prevent blood clots and speeds up healing. Start slow and increase gradually."
+    elif days <= 14:
+        return "You're doing great! This week, focus on protein-rich foods like eggs, beans, and lentils to support wound healing."
+    elif days <= 30:
+        return "Your strength is returning. Gentle stretching and short walks will help rebuild your energy. Keep attending follow-up appointments."
+    else:
+        return "You've come a long way! Continue eating well and staying active. Schedule your final follow-up with your surgeon if you haven't already."
+
+
+def _get_mood_support(mood: str) -> str:
+    support = {
+        "Okay": "That's good to hear! Keep taking it one day at a time. You're doing well.",
+        "Tired": "Fatigue is normal during recovery. Make sure you're getting enough rest and eating well. It gets better each day.",
+        "Anxious": "It's completely normal to feel anxious during recovery. Try deep breathing: inhale for 4 counts, hold for 4, exhale for 4. You're healing well.",
+        "Overwhelmed": "Recovery can feel overwhelming, and that's okay. Please consider talking to someone you trust. If you need professional support, Befrienders Kenya is available at 0722 178 177.",
+    }
+    return support.get(mood, "Thank you for sharing how you feel. Your mental health matters just as much as your physical recovery.")

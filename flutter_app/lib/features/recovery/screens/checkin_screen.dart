@@ -299,14 +299,22 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
 
                   // ── Submit button ──
                   const SizedBox(height: 28),
-                  SalamaButton(
-                    label: _hasCritical
-                        ? 'Submit & Alert Hospital →'
-                        : 'Update Recovery Plan →',
-                    color: _hasCritical
-                        ? AppColors.emergency
-                        : AppColors.primary,
-                    onTap: _submitCheckIn,
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final isLoading =
+                          ref.watch(recoveryProvider).isLoading;
+                      return SalamaButton(
+                        label: isLoading
+                            ? 'Submitting...'
+                            : _hasCritical
+                                ? 'Submit & Alert Hospital →'
+                                : 'Update Recovery Plan →',
+                        color: _hasCritical
+                            ? AppColors.emergency
+                            : AppColors.primary,
+                        onTap: isLoading ? null : _submitCheckIn,
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
                 ],
@@ -409,37 +417,60 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     );
   }
 
-  /// Submit check-in to Riverpod provider → FastAPI backend
+  /// Submit check-in → FastAPI → two-layer risk scorer → Supabase
   Future<void> _submitCheckIn() async {
     final selectedSymptoms = _symptoms.entries
         .where((e) => e.value)
         .map((e) => e.key)
         .toList();
 
-    // Save to Riverpod recovery provider
-    ref.read(recoveryProvider.notifier).submitCheckIn(
+    await ref.read(recoveryProvider.notifier).submitCheckIn(
           painLevel: _pain.round(),
           symptoms: selectedSymptoms,
           mood: _mood,
-          hasCriticalSymptoms: _hasCritical,
+          daysSinceSurgery: _days,
         );
 
-    if (mounted) {
-      // Show feedback
+    if (!mounted) return;
+
+    final recovery = ref.read(recoveryProvider);
+
+    // API call failed — show error, stay on screen so patient can retry
+    if (recovery.errorMessage.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            _hasCritical
-                ? 'Alert sent to your hospital team'
-                : 'Check-in submitted successfully',
-          ),
-          backgroundColor:
-              _hasCritical ? AppColors.emergency : AppColors.success,
+          content: Text(recovery.errorMessage),
+          backgroundColor: AppColors.emergency,
+          duration: const Duration(seconds: 4),
         ),
       );
-
-      // Navigate to dashboard
-      context.go(AppRoutes.dashboard);
+      ref.read(recoveryProvider.notifier).clearError();
+      return;
     }
+
+    // Success — show real risk level + recommendation from backend
+    final riskLevel = recovery.riskLevel;
+    final Color snackColor = switch (riskLevel) {
+      'EMERGENCY' => AppColors.emergency,
+      'HIGH'      => AppColors.emergency,
+      'MEDIUM'    => AppColors.warning,
+      _           => AppColors.success,
+    };
+    final String snackLabel = switch (riskLevel) {
+      'EMERGENCY' => 'EMERGENCY — Alert sent to hospital',
+      'HIGH'      => 'High risk — hospital has been notified',
+      'MEDIUM'    => 'Medium risk — monitor symptoms closely',
+      _           => 'Check-in submitted — recovery on track',
+    };
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(snackLabel),
+        backgroundColor: snackColor,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+
+    context.go(AppRoutes.dashboard);
   }
 }

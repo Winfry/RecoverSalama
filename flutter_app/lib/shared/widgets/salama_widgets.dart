@@ -12,7 +12,7 @@ import '../../core/constants/colors.dart';
 // Set outlined=true for secondary actions (e.g., Guest Mode).
 class SalamaButton extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color? color;
   final Color? textColor;
   final bool outlined;
@@ -20,7 +20,7 @@ class SalamaButton extends StatelessWidget {
   const SalamaButton({
     super.key,
     required this.label,
-    required this.onTap,
+    this.onTap,
     this.color,
     this.textColor,
     this.outlined = false,
