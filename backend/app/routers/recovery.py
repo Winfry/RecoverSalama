@@ -27,10 +27,12 @@ from app.schemas.recovery import (
 )
 from app.services.ml.risk_scorer import RiskScorer
 from app.services.ml.diet_engine import DietEngine
+from app.services.alert_service import AlertService
 
 router = APIRouter()
 risk_scorer = RiskScorer()
 diet_engine = DietEngine()
+alert_service = AlertService()
 
 
 @router.post("/checkin", response_model=CheckInResponse)
@@ -73,18 +75,25 @@ async def submit_checkin(
     }
     db.table("recovery_logs").insert(record).execute()
 
-    # Look up patient's hospital_id for the alert
-    if risk_level in ("HIGH", "EMERGENCY"):
-        patient = db.table("patients").select("hospital_id").eq("id", patient_id).execute()
-        hospital_id = patient.data[0].get("hospital_id") if patient.data else None
+    # Get patient phone for WhatsApp notifications
+    patient_row = (
+        db.table("patients").select("phone")
+        .eq("id", patient_id).maybe_single().execute()
+    )
+    patient_phone = patient_row.data.get("phone", "") if patient_row.data else ""
 
-        db.table("alerts").insert({
-            "patient_id": patient_id,
-            "hospital_id": hospital_id,
-            "risk_level": risk_level,
-            "symptoms": checkin.symptoms,
-            "message": f"Patient reported {risk_level} risk symptoms",
-        }).execute()
+    # AlertService handles everything: WhatsApp to patient,
+    # caregiver alert, hospital emergency alert, and DB alert record.
+    # Replaces the inline alert block that was here before.
+    await alert_service.process_checkin(
+        patient_id=patient_id,
+        phone=patient_phone,
+        pain_level=checkin.pain_level,
+        risk_level=risk_level,
+        symptom=", ".join(checkin.symptoms) if checkin.symptoms else "none",
+        ai_tip=risk_result.get("recommendation", ""),
+        channel="app",
+    )
 
     return CheckInResponse(
         risk_level=risk_level,

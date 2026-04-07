@@ -33,6 +33,7 @@ LANGUAGE:
   Menu depth max 3 levels — elderly users lose track beyond that.
 """
 
+import asyncio
 import datetime
 from app.database import get_supabase_client
 
@@ -155,15 +156,23 @@ class USSDService:
                 risk_level=risk,
             )
 
-            # Create an alert if HIGH or EMERGENCY so the
-            # hospital dashboard flags this patient immediately.
-            if risk in ("HIGH", "EMERGENCY"):
-                self._create_alert(
-                    phone=phone,
-                    pain_score=pain_score,
-                    symptom=symptom,
-                    risk=risk,
+            # AlertService handles WhatsApp notifications, caregiver
+            # alerts, hospital emergency alerts, and DB alert records.
+            # Imported here (inside method) to avoid circular imports.
+            try:
+                from app.services.alert_service import AlertService
+                asyncio.create_task(
+                    AlertService().process_checkin(
+                        patient_id=None,
+                        phone=phone,
+                        pain_level=pain_score,
+                        risk_level=risk,
+                        symptom=symptom,
+                        channel="ussd",
+                    )
                 )
+            except Exception:
+                pass
 
             return self._build_result(risk, pain_label)
 
