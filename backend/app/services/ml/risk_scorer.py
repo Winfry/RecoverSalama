@@ -91,11 +91,26 @@ MOOD_SCORES = {"Good": 1, "Tired": 2, "Anxious": 3, "Low": 4, "Overwhelmed": 4}
 # Surgery types with their high-risk windows (days post-op where
 # complications are most likely). Source: WHO surgical safety guidelines.
 HIGH_RISK_WINDOWS = {
+    # ── Existing ──────────────────────────────────────────────────────────────
     "Caesarean Section": (3, 7),       # SSI risk peaks Day 3-7
-    "Appendectomy": (2, 5),            # Bowel obstruction risk
-    "Hernia Repair": (3, 7),           # Wound complication risk
+    "Appendectomy": (2, 5),            # Bowel obstruction / stump leak risk
+    "Hernia Repair": (3, 7),           # Wound complication / mesh infection risk
     "Cholecystectomy": (1, 4),         # Bile leak risk peaks early
     "Knee Replacement": (2, 7),        # DVT risk window
+    # ── New surgery types ─────────────────────────────────────────────────────
+    "Inguinal Hernia Repair": (3, 7),  # Alias — same window as Hernia Repair
+    "Knee Replacement (TKR)": (2, 7),  # Alias — same as Knee Replacement
+    "Laparotomy": (2, 7),              # Ileus, wound dehiscence, intra-abdominal sepsis
+    "Hysterectomy": (3, 7),            # Vault dehiscence, DVT, haemorrhage Day 3-7
+    "Open Fracture Repair": (2, 14),   # Infection / osteomyelitis risk — extended window
+    "Tubal Ligation": (1, 3),          # Low-risk minor procedure; early complication window
+    "Prostatectomy": (2, 7),           # Anastomotic leak, urinary complications Day 2-7
+    "Thyroidectomy": (1, 3),           # Haematoma (airway risk) + hypocalcaemia Day 1-3
+    "Hip Replacement": (2, 7),         # DVT / dislocation risk window
+    "Hip Replacement (THR)": (2, 7),   # Alias
+    "Mastectomy": (2, 7),              # Seroma, wound infection, flap necrosis
+    "Myomectomy": (3, 7),              # Haemorrhage, adhesion formation
+    "Cardiac Surgery": (1, 14),        # Arrhythmia, sternal wound, low output — extended
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
