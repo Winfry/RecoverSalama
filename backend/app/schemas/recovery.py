@@ -34,6 +34,7 @@ class DietResponse(BaseModel):
     foods: list[FoodItem]
     avoid: list[str]
     source: str  # "Kenya National Clinical Nutrition Manual (MOH 2010)"
+    key_nutrients: str = ""  # Priority nutrients for this surgery type e.g. "Iron, Calcium, Vitamin D"
 
 
 class DashboardResponse(BaseModel):

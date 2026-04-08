@@ -68,13 +68,26 @@ logger = logging.getLogger(__name__)
 # Surgery complexity tiers — affects baseline readmission risk
 # Source: general surgical literature on 30-day readmission rates
 SURGERY_COMPLEXITY = {
-    "Caesarean Section": 2,      # Moderate — abdominal, but common
-    "Appendectomy": 1,           # Low — routine, short recovery
-    "Hernia Repair": 1,          # Low — usually outpatient
-    "Cholecystectomy": 2,        # Moderate — bile leak risk
-    "Knee Replacement": 3,       # High — long recovery, DVT risk
-    "Hip Replacement": 3,        # High — long recovery, DVT risk
-    "Mastectomy": 3,             # High — complex, infection risk
+    # ── Existing ──────────────────────────────────────────────────────────────
+    "Caesarean Section": 2,           # Moderate — abdominal, but common; common in Kenya
+    "Appendectomy": 1,                # Low — routine, short recovery
+    "Hernia Repair": 1,               # Low — usually outpatient
+    "Cholecystectomy": 2,             # Moderate — bile leak risk
+    "Knee Replacement": 3,            # High — long recovery, DVT risk
+    "Hip Replacement": 3,             # High — long recovery, DVT risk; AVN common in Kenya
+    "Mastectomy": 3,                  # High — complex; late-stage at presentation in Kenya
+    # ── New surgery types ─────────────────────────────────────────────────────
+    "Inguinal Hernia Repair": 1,      # Alias — same complexity as Hernia Repair
+    "Knee Replacement (TKR)": 3,      # Alias
+    "Hip Replacement (THR)": 3,       # Alias
+    "Laparotomy": 2,                  # Moderate — wide range of pathology; adhesion risk
+    "Hysterectomy": 2,                # Moderate — abdominal; DVT, vault dehiscence risk
+    "Open Fracture Repair": 2,        # Moderate — infection / osteomyelitis risk; RTA common
+    "Tubal Ligation": 1,              # Low — minor procedure; short recovery
+    "Prostatectomy": 2,               # Moderate — anastomotic leak; incontinence monitoring
+    "Thyroidectomy": 2,               # Moderate — hypocalcaemia + RLN injury monitoring
+    "Myomectomy": 2,                  # Moderate — haemorrhage risk; common in Kenya (fibroids)
+    "Cardiac Surgery": 3,             # High — highest complexity; ICU recovery; RHD dominant
 }
 
 # Risk category thresholds
