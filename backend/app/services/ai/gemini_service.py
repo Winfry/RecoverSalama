@@ -215,24 +215,51 @@ post-surgical patient in Kenya.
 THE PATIENT:
 - Name: {patient_name}
 - Surgery: {surgery_type}, Day {days_since_surgery} of recovery
-- Selected mood: {mood}
-- Recent mood history: {mood_history}
+- Selected mood label: {mood}
+- What they wrote in their own words: {patient_notes}
+- Recent mood history (last 7 days): {mood_history}
 
 EMOTIONAL SUPPORT GUIDELINES:
-- If mood is "Okay"/"Good": Celebrate genuinely. "Umefanya vizuri!" Encourage them.
-- If mood is "Tired": Normalize it. Recovery IS tiring. Suggest rest, hydration,
-  a short walk. Don't minimize their fatigue.
-- If mood is "Anxious": Validate first. "Wasiwasi ni kawaida baada ya upasuaji."
-  Then offer breathing exercise: inhale 4 seconds, hold 4, exhale 6.
-- If mood is "Overwhelmed"/"Low": Take this seriously. Express genuine care.
-  Suggest talking to someone they trust. Mention Befrienders Kenya: 0722 178 177.
-  Do NOT say "just think positive."
-- If mood has been negative for 3+ consecutive check-ins: Gently note the pattern.
-  "Nimegundua umekuwa na hali ngumu siku kadhaa..." Recommend professional support.
 
-LANGUAGE: Respond in {language}. If Kiswahili, use natural conversational Kiswahili.
+PRIORITY: If the patient wrote something in their own words (patient_notes),
+respond to THAT first — it tells you more than the label. A patient who selects
+"Okay" but writes "but I keep crying and I don't know why" is NOT okay.
+A patient who selects "Anxious" but writes "just anxious about my school fees
+not my health" needs different support than someone anxious about wound pain.
+Read what they actually wrote and respond to their specific situation.
 
-Respond with a warm, concise message (2-4 sentences). Be human, not clinical.
+COMPLEX EMOTIONS — handle these if they appear in the patient's words:
+- Grief / loss of identity: Common after mastectomy, hysterectomy, amputation.
+  Acknowledge the emotional weight of changed body image, not just physical healing.
+- Loneliness: Very common — patients often can't leave home. "Ninajua ni ngumu
+  kukaa nyumbani peke yako." Suggest calling a friend, family video call.
+- Fear of dying / not recovering: "Ninajua unaogopa. Hofu hiyo ni ya kawaida."
+  Reassure but do not dismiss. Name the fear directly.
+- Guilt (burdening family): Very Kenyan concern. "Familia yako inakupenda na
+  wanafurahi kukusaidia." Reframe caregiving as love, not burden.
+- Anger: Validate it — anger at being unwell is completely normal. Don't redirect
+  it, just hold it. "Hasira ni sawa. Upasuaji ni ngumu na unabadilisha maisha."
+- Shame / stigma: Around mental health in Kenya. Never make them feel judged.
+  "Hii ni jambo la kawaida kuzungumza nacho."
+- Hopelessness / suicidal ideation: If the patient expresses hopelessness,
+  ALWAYS mention Befrienders Kenya 0722 178 177 AND Mathare Hospital
+  020 2723 031. Take it seriously — do not redirect to diet or exercise.
+
+STANDARD MOODS:
+- "Okay": Celebrate genuinely. Encourage them.
+- "Tired": Normalize it. Recovery IS exhausting. Rest, hydrate, short walk.
+- "Anxious": Validate first, then offer 4-4-6 breathing (in 4, hold 4, out 6).
+- "Overwhelmed": Express genuine care. Mention professional support. Never
+  say "just think positive."
+
+MOOD PATTERN: If mood has been negative for 3+ consecutive check-ins, gently
+note the pattern and recommend professional support.
+
+LANGUAGE: Respond in {language}. Mix languages naturally the way Kenyans do.
+Use warm, human language — not clinical or textbook.
+
+Respond in 3-5 sentences maximum. Be specific to what this patient actually said.
+Do NOT give generic advice. Do NOT list bullet points. Write like a caring friend.
 """
 
 CAREGIVER_SUMMARY_PROMPT = """Generate a brief daily recovery summary for a family
@@ -486,33 +513,37 @@ class GeminiService:
         patient_context: dict,
         mood_history: list[str] | None = None,
         language: str = "en",
+        notes: str | None = None,
     ) -> str:
         """
         Mental health support — Flutter Screen 07.
 
-        Generates an empathetic, culturally appropriate response
-        based on the patient's selected mood. Considers mood history
-        to detect persistent negative patterns.
+        Generates an empathetic, culturally appropriate response based on the
+        patient's mood label AND their free-text description of how they feel.
+        Understands complex emotions beyond the 4 basic labels.
 
         Args:
-            mood: Current mood ("Okay", "Tired", "Anxious", "Overwhelmed")
+            mood: Selected mood label ("Okay", "Tired", "Anxious", "Overwhelmed")
             patient_context: {name, surgery_type, days_since_surgery}
-            mood_history: List of recent moods ["Good", "Tired", "Tired", "Anxious"]
+            mood_history: Recent moods ["Tired", "Tired", "Anxious"]
             language: "en" or "sw"
+            notes: Free-text from the patient describing how they really feel
 
         Returns:
-            A warm, concise support message (string)
+            A warm, concise, personalised support message (string)
         """
         if not self.available:
             return self._fallback_mood_response(mood, language)
 
         history_text = ", ".join(mood_history[-7:]) if mood_history else "No previous data"
+        notes_text = notes.strip() if notes and notes.strip() else "Patient did not add details."
 
         prompt = MOOD_SUPPORT_PROMPT.format(
             patient_name=patient_context.get("name", "there"),
             surgery_type=patient_context.get("surgery_type", "surgery"),
             days_since_surgery=patient_context.get("days_since_surgery", 0),
             mood=mood,
+            patient_notes=notes_text,
             mood_history=history_text,
             language="Kiswahili" if language == "sw" else "English",
         )

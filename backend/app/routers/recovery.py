@@ -29,6 +29,7 @@ from app.services.ml.risk_scorer import RiskScorer
 from app.services.ml.diet_engine import DietEngine
 from app.services.ml.mood_classifier import MoodClassifier
 from app.services.alert_service import AlertService
+from app.services.ai.gemini_service import GeminiService
 
 router = APIRouter()
 risk_scorer = RiskScorer()
@@ -205,9 +206,11 @@ async def submit_mood(
     mood_data: MoodRequest,
     patient_id: str = Depends(get_patient_id),
 ):
-    """Save mental health check-in from Flutter Screen 07. Uses MoodClassifier
-    to analyse mood trends across the last 7 days and detect early signs of
-    post-surgical depression or anxiety."""
+    """Save mental health check-in from Flutter Screen 07.
+
+    Combines rule-based trend detection (MoodClassifier) with Gemini AI
+    to understand both mood patterns AND complex emotions the patient
+    describes in their own words."""
     db = get_supabase_client()
 
     # Save the new mood log
@@ -217,7 +220,13 @@ async def submit_mood(
         "notes": mood_data.notes,
     }).execute()
 
-    # Fetch the last 7 mood logs (excluding the one just inserted) to detect trends
+    # Fetch patient context for personalised AI response
+    patient_result = db.table("patients").select("name, surgery_type, surgery_date").eq("id", patient_id).execute()
+    patient = patient_result.data[0] if patient_result.data else {}
+    surgery_date = patient.get("surgery_date")
+    days_since_surgery = (date.today() - date.fromisoformat(surgery_date)).days if surgery_date else 0
+
+    # Fetch the last 7 mood logs to detect trends
     history = (
         db.table("mood_logs")
         .select("mood")
@@ -228,13 +237,27 @@ async def submit_mood(
     )
     recent_moods = [row["mood"] for row in (history.data or [])]
 
-    # Classify current mood in context of recent history
+    # Rule-based classification for mental health level (stable/monitor/needs_support)
     classifier = MoodClassifier()
     assessment = classifier.classify(mood_data.mood, recent_moods)
 
+    # Gemini AI for a personalised, nuanced support message that understands
+    # whatever the patient wrote — complex emotions, Kiswahili, or mixed language
+    gemini = GeminiService()
+    support_message = await gemini.support_mood(
+        mood=mood_data.mood,
+        patient_context={
+            "name": patient.get("name", ""),
+            "surgery_type": patient.get("surgery_type", ""),
+            "days_since_surgery": days_since_surgery,
+        },
+        mood_history=recent_moods,
+        notes=mood_data.notes,
+    )
+
     return MoodResponse(
         status="saved",
-        support_message=assessment["message"],
+        support_message=support_message,
         mental_health_level=assessment["level"],
     )
 

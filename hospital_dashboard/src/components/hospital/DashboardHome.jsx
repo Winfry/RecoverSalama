@@ -3,16 +3,14 @@
  *
  * Shows at a glance:
  * - Total active patients
- * - Patients by risk level (LOW/MEDIUM/HIGH/EMERGENCY)
- * - Recent alerts that need attention
- * - Today's check-in completion rate
- *
- * This gives nurses and doctors an immediate overview of
- * which patients need attention RIGHT NOW.
+ * - High/Emergency risk count (was hardcoded to 0 — now real)
+ * - Pending alerts
+ * - Check-ins completed today (was hardcoded to 0 — now real)
+ * - Recent alerts list
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getPatients, getAlerts } from '../../services/api';
+import { getPatients, getAlerts, getAnalytics } from '../../services/api';
 import RiskBadge from '../common/RiskBadge';
 
 export default function DashboardHome() {
@@ -26,6 +24,12 @@ export default function DashboardHome() {
     queryFn: () => getAlerts().then((r) => r.data),
   });
 
+  const { data: analytics } = useQuery({
+    queryKey: ['analytics'],
+    queryFn: () => getAnalytics().then((r) => r.data),
+    refetchInterval: 60_000,
+  });
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
@@ -34,10 +38,29 @@ export default function DashboardHome() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Active Patients" value={patients?.length || 0} icon="👥" />
-        <StatCard title="High Risk" value={0} icon="🔴" color="text-red-600" />
-        <StatCard title="Pending Alerts" value={alerts?.length || 0} icon="🚨" color="text-amber-600" />
-        <StatCard title="Check-ins Today" value={0} icon="✅" color="text-green-600" />
+        <StatCard
+          title="Active Patients"
+          value={patients?.length ?? 0}
+          icon="👥"
+        />
+        <StatCard
+          title="High / Emergency"
+          value={analytics?.high_risk_count ?? 0}
+          icon="🔴"
+          color="text-red-600"
+        />
+        <StatCard
+          title="Pending Alerts"
+          value={alerts?.length ?? 0}
+          icon="🚨"
+          color="text-amber-600"
+        />
+        <StatCard
+          title="Check-ins Today"
+          value={analytics?.checkins_today ?? 0}
+          icon="✅"
+          color="text-green-600"
+        />
       </div>
 
       {/* Recent alerts */}
