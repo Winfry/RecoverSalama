@@ -43,7 +43,7 @@ class MentalHealthNotifier extends StateNotifier<MentalHealthState> {
 
   MentalHealthNotifier(this._api) : super(const MentalHealthState());
 
-  Future<void> selectMood(String mood) async {
+  Future<void> selectMood(String mood, {String? notes}) async {
     // Immediately reflect selection in UI
     state = state.copyWith(
       selectedMood: mood,
@@ -53,7 +53,7 @@ class MentalHealthNotifier extends StateNotifier<MentalHealthState> {
     );
 
     try {
-      final response = await _api.submitMoodCheckIn(mood: mood);
+      final response = await _api.submitMoodCheckIn(mood: mood, notes: notes);
       final data = response.data as Map<String, dynamic>;
       state = state.copyWith(
         supportMessage: data['support_message'] as String?,

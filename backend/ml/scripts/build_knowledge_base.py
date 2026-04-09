@@ -2738,7 +2738,15 @@ def process_pdf(filepath: Path, source_name: str, category: str, authority: str)
         return []
 
     print(f"  Loading PDF: {filepath.name}")
-    reader = PdfReader(str(filepath))
+    try:
+        reader = PdfReader(str(filepath), strict=False)
+    except Exception as e:
+        print(f"  WARNING: Could not open PDF ({e}). Trying with strict=False...")
+        try:
+            reader = PdfReader(str(filepath), strict=False)
+        except Exception as e2:
+            print(f"  ERROR: Cannot open PDF: {e2}")
+            return []
     total_pages = len(reader.pages)
     print(f"  Pages: {total_pages}")
 

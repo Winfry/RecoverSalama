@@ -25,6 +25,13 @@ class MentalHealthScreen extends ConsumerStatefulWidget {
 
 class _MentalHealthScreenState extends ConsumerState<MentalHealthScreen> {
   String? _mood;
+  final _notesController = TextEditingController();
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
 
   // Fallback messages used when the API is unavailable
   final Map<String, String> _fallbackMessages = {
@@ -156,10 +163,14 @@ class _MentalHealthScreenState extends ConsumerState<MentalHealthScreen> {
                         onTap: () {
                           setState(
                               () => _mood = m['label'] as String);
-                          // Save to provider
                           ref
                               .read(mentalHealthProvider.notifier)
-                              .selectMood(m['label'] as String);
+                              .selectMood(
+                                m['label'] as String,
+                                notes: _notesController.text.trim().isEmpty
+                                    ? null
+                                    : _notesController.text.trim(),
+                              );
                         },
                         child: AnimatedContainer(
                           duration:
@@ -204,6 +215,52 @@ class _MentalHealthScreenState extends ConsumerState<MentalHealthScreen> {
                         ),
                       );
                     }).toList(),
+                  ),
+
+                  // ── Tell us more (free-text emotions) ──
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _notesController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Tell us more about how you feel... (optional)\n'
+                          'You can write in English or Kiswahili',
+                      hintStyle: const TextStyle(
+                          fontSize: 12, color: AppColors.textHint),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF5C6BC0), width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                    onEditingComplete: () {
+                      // Send to AI when the patient finishes typing
+                      FocusScope.of(context).unfocus();
+                      if (_mood != null) {
+                        ref
+                            .read(mentalHealthProvider.notifier)
+                            .selectMood(
+                              _mood!,
+                              notes: _notesController.text.trim().isEmpty
+                                  ? null
+                                  : _notesController.text.trim(),
+                            );
+                      }
+                    },
                   ),
 
                   // ── AI Response card (green) ──
