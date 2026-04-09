@@ -125,3 +125,4 @@ ngrok
 *.log
 *.tmp
 *.bak
+backend/ml/data/knowledge_base/*.pdf
