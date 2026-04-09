@@ -9,7 +9,8 @@ python-dotenv==1.0.1
 supabase==2.7.0
 
 # AI / LLM
-google-generativeai>=0.8.0
+google-generativeai>=0.8.0  # used by Gemini LLM services (risk scorer, chat, diet)
+google-genai>=1.0.0          # used by RAG embeddings (text-embedding-004)
 
 # ML (added in Phase 4 when training custom models)
 # scikit-learn, xgboost, lightgbm, pandas — not yet used

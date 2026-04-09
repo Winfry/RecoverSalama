@@ -18,16 +18,19 @@ the RAG retrieves the exact pages from the Kenya Nutrition Manual about
 soft diet progression, and Gemini answers using THAT information.
 """
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 
 from app.config import settings
 from app.database import get_supabase_client
 
+_EMBEDDING_MODEL = "models/gemini-embedding-001"
+_EMBEDDING_DIMENSIONS = 768  # Must match VECTOR(768) in Supabase schema
+
 
 class RAGService:
     def __init__(self):
-        genai.configure(api_key=settings.gemini_api_key)
-        self._model = "models/text-embedding-004"
+        self._client = genai.Client(api_key=settings.gemini_api_key)
 
     async def retrieve(self, query: str, top_k: int = 5) -> list[dict]:
         """
@@ -36,9 +39,16 @@ class RAGService:
         Uses cosine similarity search on pgvector embeddings.
         Returns top_k chunks with their content, source, and page number.
         """
-        # Embed the query using Google's embedding API directly
-        result = genai.embed_content(model=self._model, content=query)
-        query_embedding = result["embedding"]
+        # Embed the query — RETRIEVAL_QUERY task type optimises for search
+        result = self._client.models.embed_content(
+            model=_EMBEDDING_MODEL,
+            contents=query,
+            config=genai_types.EmbedContentConfig(
+                task_type="RETRIEVAL_QUERY",
+                output_dimensionality=_EMBEDDING_DIMENSIONS,
+            ),
+        )
+        query_embedding = list(result.embeddings[0].values)
 
         # Search pgvector via Supabase RPC
         db = get_supabase_client()

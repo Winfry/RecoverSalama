@@ -26,6 +26,25 @@ class MentalHealthScreen extends ConsumerStatefulWidget {
 class _MentalHealthScreenState extends ConsumerState<MentalHealthScreen> {
   String? _mood;
 
+  // Fallback messages used when the API is unavailable
+  final Map<String, String> _fallbackMessages = {
+    'Okay':
+        'That is wonderful! 💚 Keep up the positivity — it genuinely supports '
+            'healing. Try a short walk and enjoy some sunlight today if possible.',
+    'Tired':
+        'Fatigue is completely normal at this stage. 🌙 Rest as much as you need. '
+            'Stay hydrated, eat well, and do not push yourself. Your body is working '
+            'hard to heal.',
+    'Anxious':
+        'It is okay to feel anxious — you have been through a lot. 🌿 Try the '
+            '4-4-4 breathing technique: breathe in 4 seconds, hold 4, out 4. Consider '
+            'talking to someone you trust today.',
+    'Overwhelmed':
+        'You are not alone in feeling this way. 💛 Your feelings are valid. Please '
+            'speak with a mental health professional or trusted person today. You '
+            'deserve support.',
+  };
+
   // 4 moods — each with color, background, emoji, and description
   final _moods = [
     {
@@ -58,27 +77,14 @@ class _MentalHealthScreenState extends ConsumerState<MentalHealthScreen> {
     },
   ];
 
-  // AI responses — personalised per mood
-  final Map<String, String> _responses = {
-    'Okay':
-        'That is wonderful! 💚 Keep up the positivity — it genuinely supports '
-            'healing. Try a short walk and enjoy some sunlight today if possible.',
-    'Tired':
-        'Fatigue is completely normal at this stage. 🌙 Rest as much as you need. '
-            'Stay hydrated, eat well, and do not push yourself. Your body is working '
-            'hard to heal.',
-    'Anxious':
-        'It is okay to feel anxious — you have been through a lot. 🌿 Try the '
-            '4-4-4 breathing technique: breathe in 4 seconds, hold 4, out 4. Consider '
-            'talking to someone you trust today.',
-    'Overwhelmed':
-        'You are not alone in feeling this way. 💛 Your feelings are valid. Please '
-            'speak with a mental health professional or trusted person today. You '
-            'deserve support.',
-  };
 
   @override
   Widget build(BuildContext context) {
+    final mhState = ref.watch(mentalHealthProvider);
+    // Use backend message if available; fall back to local message
+    final displayMessage = mhState.supportMessage ??
+        (_mood != null ? _fallbackMessages[_mood] : null);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -222,14 +228,30 @@ class _MentalHealthScreenState extends ConsumerState<MentalHealthScreen> {
                                   fontSize: 14,
                                   color: AppColors.textPrimary)),
                           const SizedBox(height: 8),
-                          Text(_responses[_mood]!,
+                          if (mhState.isLoading)
+                            const Center(
+                              child: SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.success),
+                              ),
+                            )
+                          else
+                            Text(
+                              displayMessage ?? '',
                               style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textPrimary,
-                                  height: 1.7)),
+                                  height: 1.7),
+                            ),
 
                           // SAFETY: Red referral button for "Overwhelmed"
-                          if (_mood == 'Overwhelmed') ...[
+                          // or when backend flags needs_support
+                          if (_mood == 'Overwhelmed' ||
+                              mhState.mentalHealthLevel ==
+                                  'needs_support') ...[
                             const SizedBox(height: 12),
                             SalamaButton(
                               label: '🤝 Connect to a Professional',
