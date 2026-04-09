@@ -27,6 +27,7 @@ from app.schemas.recovery import (
 )
 from app.services.ml.risk_scorer import RiskScorer
 from app.services.ml.diet_engine import DietEngine
+from app.services.ml.mood_classifier import MoodClassifier
 from app.services.alert_service import AlertService
 
 router = APIRouter()
@@ -204,17 +205,37 @@ async def submit_mood(
     mood_data: MoodRequest,
     patient_id: str = Depends(get_patient_id),
 ):
-    """Save mental health check-in from Flutter Screen 07."""
+    """Save mental health check-in from Flutter Screen 07. Uses MoodClassifier
+    to analyse mood trends across the last 7 days and detect early signs of
+    post-surgical depression or anxiety."""
     db = get_supabase_client()
+
+    # Save the new mood log
     db.table("mood_logs").insert({
         "patient_id": patient_id,
         "mood": mood_data.mood,
         "notes": mood_data.notes,
     }).execute()
 
+    # Fetch the last 7 mood logs (excluding the one just inserted) to detect trends
+    history = (
+        db.table("mood_logs")
+        .select("mood")
+        .eq("patient_id", patient_id)
+        .order("created_at", desc=True)
+        .limit(7)
+        .execute()
+    )
+    recent_moods = [row["mood"] for row in (history.data or [])]
+
+    # Classify current mood in context of recent history
+    classifier = MoodClassifier()
+    assessment = classifier.classify(mood_data.mood, recent_moods)
+
     return MoodResponse(
         status="saved",
-        support_message=_get_mood_support(mood_data.mood),
+        support_message=assessment["message"],
+        mental_health_level=assessment["level"],
     )
 
 

@@ -62,3 +62,4 @@ class MoodRequest(BaseModel):
 class MoodResponse(BaseModel):
     status: str
     support_message: str
+    mental_health_level: str  # "stable" | "monitor" | "needs_support"
