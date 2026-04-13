@@ -51,20 +51,40 @@ async def submit_checkin(
     """
     db = get_supabase_client()
 
+    # Fetch patient profile to pass surgery_type, age, gender to risk scorer
+    patient_row = (
+        db.table("patients")
+        .select("phone, surgery_type, date_of_birth, gender")
+        .eq("id", patient_id)
+        .maybe_single()
+        .execute()
+    )
+    patient_data = patient_row.data or {}
+    surgery_type = patient_data.get("surgery_type", "Unknown") or "Unknown"
+    gender = patient_data.get("gender", "") or ""
+
+    # Calculate age from date_of_birth if available
+    age = 0
+    dob = patient_data.get("date_of_birth")
+    if dob:
+        try:
+            from datetime import date as _date
+            age = (_date.today() - _date.fromisoformat(str(dob)[:10])).days // 365
+        except Exception:
+            age = 0
+
     # Score risk using two-layer system (rules + Gemini)
     risk_result = await risk_scorer.assess_risk(
         pain_level=checkin.pain_level,
         symptoms=checkin.symptoms,
         mood=checkin.mood,
         days_since_surgery=checkin.days_since_surgery,
+        surgery_type=surgery_type,
+        age=age,
+        gender=gender,
     )
 
-    risk_level = risk_result.get("risk_level", risk_scorer.predict(
-        pain_level=checkin.pain_level,
-        symptoms=checkin.symptoms,
-        mood=checkin.mood,
-        days_since_surgery=checkin.days_since_surgery,
-    ))
+    risk_level = risk_result.get("risk_level", "LOW")
 
     # Save to database
     record = {
@@ -77,12 +97,7 @@ async def submit_checkin(
     }
     db.table("recovery_logs").insert(record).execute()
 
-    # Get patient phone for WhatsApp notifications
-    patient_row = (
-        db.table("patients").select("phone")
-        .eq("id", patient_id).maybe_single().execute()
-    )
-    patient_phone = patient_row.data.get("phone", "") if patient_row.data else ""
+    patient_phone = patient_data.get("phone", "") or ""
 
     # AlertService handles everything: WhatsApp to patient,
     # caregiver alert, hospital emergency alert, and DB alert record.

@@ -33,12 +33,14 @@ LANGUAGE:
   Menu depth max 3 levels — elderly users lose track beyond that.
 """
 
-import asyncio
 import datetime
 from app.database import get_supabase_client
 
 
 class USSDService:
+
+    def __init__(self):
+        self._pending_alert: dict | None = None
 
     def handle_session(
         self, session_id: str, phone: str, text: str
@@ -158,21 +160,16 @@ class USSDService:
 
             # AlertService handles WhatsApp notifications, caregiver
             # alerts, hospital emergency alerts, and DB alert records.
-            # Imported here (inside method) to avoid circular imports.
-            try:
-                from app.services.alert_service import AlertService
-                asyncio.create_task(
-                    AlertService().process_checkin(
-                        patient_id=None,
-                        phone=phone,
-                        pain_level=pain_score,
-                        risk_level=risk,
-                        symptom=symptom,
-                        channel="ussd",
-                    )
-                )
-            except Exception:
-                pass
+            # We return the alert coroutine to be scheduled by the
+            # async webhook handler — do not call asyncio.create_task here.
+            self._pending_alert = dict(
+                patient_id=None,
+                phone=phone,
+                pain_level=pain_score,
+                risk_level=risk,
+                symptom=symptom,
+                channel="ussd",
+            )
 
             return self._build_result(risk, pain_label)
 

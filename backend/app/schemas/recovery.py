@@ -2,14 +2,16 @@
 Recovery data schemas — check-ins, diet plans, risk levels, dashboard.
 """
 
-from pydantic import BaseModel
+from typing import Annotated
+
+from pydantic import BaseModel, Field
 
 
 class CheckInRequest(BaseModel):
-    pain_level: int  # 0-10
+    pain_level: Annotated[int, Field(ge=0, le=10)]
     symptoms: list[str]  # ["Fever above 38°C", "Wound bleeding", etc.]
     mood: str  # "Good", "Tired", "Anxious", "Low"
-    days_since_surgery: int
+    days_since_surgery: Annotated[int, Field(ge=0)]
 
 
 class CheckInResponse(BaseModel):

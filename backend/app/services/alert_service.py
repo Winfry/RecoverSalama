@@ -31,8 +31,12 @@ WHY THIS MATTERS:
 """
 
 import datetime
+import logging
+
 from app.database import get_supabase_client
 from app.services.channels.whatsapp_service import WhatsAppService
+
+logger = logging.getLogger(__name__)
 
 
 class AlertService:
@@ -252,8 +256,8 @@ class AlertService:
                 ),
                 "created_at": datetime.datetime.utcnow().isoformat(),
             }).execute()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to create DB alert for patient {patient_id or phone}: {e}")
 
     # ── Helper: Pain Label ─────────────────────────────────────
 

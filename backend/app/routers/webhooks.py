@@ -33,7 +33,7 @@ async def whatsapp_webhook(request: Request):
     phone = form_data.get("from", "")
     message = form_data.get("text", "")
 
-    response = await whatsapp.handle_message(phone=phone, message=message)
+    response = await whatsapp.handle_incoming(phone=phone, message=message)
     return {"status": "processed", "response": response}
 
 
@@ -46,6 +46,8 @@ async def ussd_webhook(request: Request):
     USSD is menu-based (not free text), so responses are
     rule-based rather than LLM-powered.
     """
+    from app.services.alert_service import AlertService
+
     form_data = await request.form()
     session_id = form_data.get("sessionId", "")
     phone = form_data.get("phoneNumber", "")
@@ -56,4 +58,14 @@ async def ussd_webhook(request: Request):
         phone=phone,
         text=text,
     )
+
+    # Fire alert if the sync handler queued one (avoids asyncio.create_task in sync context)
+    if ussd._pending_alert:
+        alert_kwargs = ussd._pending_alert
+        ussd._pending_alert = None
+        try:
+            await AlertService().process_checkin(**alert_kwargs)
+        except Exception:
+            pass
+
     return response
