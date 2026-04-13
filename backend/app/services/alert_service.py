@@ -38,11 +38,23 @@ from app.services.channels.whatsapp_service import WhatsAppService
 
 logger = logging.getLogger(__name__)
 
+# Module-level singleton — WhatsApp SDK is initialized once at import time,
+# not on every check-in. This prevents africastalking.initialize() being
+# called hundreds of times per day which can cause connection pool issues.
+_whatsapp_singleton: WhatsAppService | None = None
+
+
+def _get_whatsapp() -> WhatsAppService:
+    global _whatsapp_singleton
+    if _whatsapp_singleton is None:
+        _whatsapp_singleton = WhatsAppService()
+    return _whatsapp_singleton
+
 
 class AlertService:
 
     def __init__(self):
-        self._whatsapp = WhatsAppService()
+        self._whatsapp = _get_whatsapp()
 
     # ── Main Entry Point ───────────────────────────────────────
 
@@ -200,15 +212,13 @@ class AlertService:
             if patient.get("hospital_id"):
                 hosp_result = (
                     db.table("hospitals")
-                    .select("contact_phone")
+                    .select("phone")
                     .eq("id", patient["hospital_id"])
                     .maybe_single()
                     .execute()
                 )
                 if hosp_result.data:
-                    patient["hospital_phone"] = hosp_result.data.get(
-                        "contact_phone"
-                    )
+                    patient["hospital_phone"] = hosp_result.data.get("phone")
 
             return patient
 
@@ -243,10 +253,11 @@ class AlertService:
             db.table("alerts").insert({
                 "patient_id": patient_id or patient.get("id"),
                 "hospital_id": patient.get("hospital_id"),
-                "channel": channel,
                 "risk_level": risk_level,
+                # Store symptom in the symptoms array (matches schema)
+                "symptoms": [symptom] if symptom and symptom != "none" else [],
+                "channel": channel,
                 "pain_level": pain_level,
-                "symptom": symptom,
                 "phone": phone,
                 "status": "active",
                 "message": (

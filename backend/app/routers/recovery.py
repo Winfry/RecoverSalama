@@ -54,7 +54,7 @@ async def submit_checkin(
     # Fetch patient profile to pass surgery_type, age, gender to risk scorer
     patient_row = (
         db.table("patients")
-        .select("phone, surgery_type, date_of_birth, gender")
+        .select("phone, surgery_type, age, gender")
         .eq("id", patient_id)
         .maybe_single()
         .execute()
@@ -63,28 +63,49 @@ async def submit_checkin(
     surgery_type = patient_data.get("surgery_type", "Unknown") or "Unknown"
     gender = patient_data.get("gender", "") or ""
 
-    # Calculate age from date_of_birth if available
-    age = 0
-    dob = patient_data.get("date_of_birth")
-    if dob:
-        try:
-            from datetime import date as _date
-            age = (_date.today() - _date.fromisoformat(str(dob)[:10])).days // 365
-        except Exception:
-            age = 0
+    # Use age directly from the patients table (stored as integer)
+    age = patient_data.get("age") or 0
+    try:
+        age = int(age)
+    except (TypeError, ValueError):
+        age = 0
+
+    # Validation: Ensure days_since_surgery is non-negative
+    current_days = max(0, checkin.days_since_surgery)
 
     # Score risk using two-layer system (rules + Gemini)
     risk_result = await risk_scorer.assess_risk(
         pain_level=checkin.pain_level,
         symptoms=checkin.symptoms,
         mood=checkin.mood,
-        days_since_surgery=checkin.days_since_surgery,
+        days_since_surgery=current_days,
         surgery_type=surgery_type,
         age=age,
         gender=gender,
     )
 
     risk_level = risk_result.get("risk_level", "LOW")
+
+    # Prevent duplicate check-ins on the same calendar day.
+    # If the patient already checked in today, return the existing result
+    # instead of creating a second record and firing duplicate alerts.
+    today_str = date.today().isoformat()
+    existing = (
+        db.table("recovery_logs")
+        .select("risk_level, days_since_surgery")
+        .eq("patient_id", patient_id)
+        .gte("created_at", today_str)
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        existing_risk = existing.data[0].get("risk_level", "LOW")
+        return CheckInResponse(
+            risk_level=existing_risk,
+            message=_get_risk_message(existing_risk),
+            reasoning="Check-in already submitted today.",
+            recommendation="You have already checked in today. See you tomorrow!",
+        )
 
     # Save to database
     record = {
@@ -136,9 +157,13 @@ async def get_dashboard(patient_id: str = Depends(get_patient_id)):
     p = patient.data[0]
     surgery_date = p.get("surgery_date")
 
-    # Calculate days since surgery
+    # Calculate days since surgery — slice to 10 chars handles both
+    # "2025-04-01" and "2025-04-01T00:00:00" formats from Supabase
     if surgery_date:
-        days = (date.today() - date.fromisoformat(surgery_date)).days
+        try:
+            days = (date.today() - date.fromisoformat(str(surgery_date)[:10])).days
+        except (ValueError, TypeError):
+            days = 0
     else:
         days = 0
 
@@ -164,7 +189,7 @@ async def get_dashboard(patient_id: str = Depends(get_patient_id)):
         surgery_date=surgery_date or "",
         days_since_surgery=days,
         recovery_day=days,
-        total_recovery_days=42,
+        total_recovery_days=_get_total_recovery_days(p.get("surgery_type", "")),
         stage_name=stage["name"],
         stage_description=stage["description"],
         allowed_activities=stage["allowed"],
@@ -228,7 +253,19 @@ async def submit_mood(
     describes in their own words."""
     db = get_supabase_client()
 
-    # Save the new mood log
+    # Fetch history BEFORE saving the new mood so the classifier
+    # sees the previous trend, not the current mood counted twice.
+    history = (
+        db.table("mood_logs")
+        .select("mood")
+        .eq("patient_id", patient_id)
+        .order("created_at", desc=True)
+        .limit(7)
+        .execute()
+    )
+    recent_moods = [row["mood"] for row in (history.data or [])]
+
+    # Now save the new mood log
     db.table("mood_logs").insert({
         "patient_id": patient_id,
         "mood": mood_data.mood,
@@ -239,18 +276,10 @@ async def submit_mood(
     patient_result = db.table("patients").select("name, surgery_type, surgery_date").eq("id", patient_id).execute()
     patient = patient_result.data[0] if patient_result.data else {}
     surgery_date = patient.get("surgery_date")
-    days_since_surgery = (date.today() - date.fromisoformat(surgery_date)).days if surgery_date else 0
-
-    # Fetch the last 7 mood logs to detect trends
-    history = (
-        db.table("mood_logs")
-        .select("mood")
-        .eq("patient_id", patient_id)
-        .order("created_at", desc=True)
-        .limit(7)
-        .execute()
-    )
-    recent_moods = [row["mood"] for row in (history.data or [])]
+    try:
+        days_since_surgery = (date.today() - date.fromisoformat(str(surgery_date)[:10])).days if surgery_date else 0
+    except (ValueError, TypeError):
+        days_since_surgery = 0
 
     # Rule-based classification for mental health level (stable/monitor/needs_support)
     classifier = MoodClassifier()
@@ -287,6 +316,36 @@ def _get_risk_message(risk_level: str) -> str:
         "EMERGENCY": "Seek immediate medical help. Call 999 or go to the nearest hospital.",
     }
     return messages.get(risk_level, "Check-in recorded.")
+
+
+# Expected total recovery days per surgery type.
+# Source: Kenya MOH clinical guidelines + WHO surgical safety standards.
+# Used for the Flutter progress bar so patients see accurate timelines.
+_RECOVERY_DAYS: dict[str, int] = {
+    "Caesarean Section": 42,
+    "Appendectomy": 21,
+    "Hernia Repair": 21,
+    "Inguinal Hernia Repair": 21,
+    "Cholecystectomy": 28,
+    "Knee Replacement": 90,
+    "Knee Replacement (TKR)": 90,
+    "Hip Replacement": 90,
+    "Hip Replacement (THR)": 90,
+    "Laparotomy": 42,
+    "Hysterectomy": 42,
+    "Open Fracture Repair": 84,
+    "Tubal Ligation": 14,
+    "Prostatectomy": 42,
+    "Thyroidectomy": 21,
+    "Mastectomy": 42,
+    "Myomectomy": 42,
+    "Cardiac Surgery": 180,
+}
+
+
+def _get_total_recovery_days(surgery_type: str) -> int:
+    """Return expected recovery days for a surgery type. Defaults to 42."""
+    return _RECOVERY_DAYS.get(surgery_type, 42)
 
 
 def _get_recovery_stage(days: int) -> dict:
@@ -331,13 +390,3 @@ def _get_ai_tip(days: int, surgery_type: str) -> str:
         return "Your strength is returning. Gentle stretching and short walks will help rebuild your energy. Keep attending follow-up appointments."
     else:
         return "You've come a long way! Continue eating well and staying active. Schedule your final follow-up with your surgeon if you haven't already."
-
-
-def _get_mood_support(mood: str) -> str:
-    support = {
-        "Okay": "That's good to hear! Keep taking it one day at a time. You're doing well.",
-        "Tired": "Fatigue is normal during recovery. Make sure you're getting enough rest and eating well. It gets better each day.",
-        "Anxious": "It's completely normal to feel anxious during recovery. Try deep breathing: inhale for 4 counts, hold for 4, exhale for 4. You're healing well.",
-        "Overwhelmed": "Recovery can feel overwhelming, and that's okay. Please consider talking to someone you trust. If you need professional support, Befrienders Kenya is available at 0722 178 177.",
-    }
-    return support.get(mood, "Thank you for sharing how you feel. Your mental health matters just as much as your physical recovery.")

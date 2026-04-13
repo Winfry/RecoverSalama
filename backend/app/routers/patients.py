@@ -48,7 +48,10 @@ async def get_my_profile(user: dict = Depends(get_current_user)):
 
 
 @router.get("/")
-async def list_patients(hospital_id: str | None = None):
+async def list_patients(
+    hospital_id: str | None = None,
+    _user: dict = Depends(get_current_user),
+):
     """List patients — filtered by hospital for the dashboard."""
     db = get_supabase_client()
     query = db.table("patients").select("*")
@@ -59,7 +62,11 @@ async def list_patients(hospital_id: str | None = None):
 
 
 @router.get("/{patient_id}/history")
-async def get_patient_history(patient_id: str, limit: int = 14):
+async def get_patient_history(
+    patient_id: str,
+    limit: int = 14,
+    _user: dict = Depends(get_current_user),
+):
     """
     Check-in history for a patient — used by the hospital dashboard's
     PatientDetail screen to show pain trend and symptom log.
@@ -81,6 +88,7 @@ async def get_patient_history(patient_id: str, limit: int = 14):
 async def discharge_patient(
     patient_id: str,
     discharge_data: DischargeRequest,
+    _user: dict = Depends(get_current_user),
 ):
     """
     Formally discharge a patient from hospital.
@@ -143,7 +151,10 @@ async def discharge_patient(
 
 
 @router.get("/{patient_id}", response_model=PatientResponse)
-async def get_patient(patient_id: str):
+async def get_patient(
+    patient_id: str,
+    _user: dict = Depends(get_current_user),
+):
     """Get a single patient — used by Flutter app and hospital dashboard."""
     db = get_supabase_client()
     result = db.table("patients").select("*").eq("id", patient_id).execute()

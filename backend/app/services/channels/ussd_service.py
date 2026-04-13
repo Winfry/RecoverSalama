@@ -225,64 +225,21 @@ class USSDService:
 
             db.table("recovery_logs").insert({
                 "patient_id": patient_id,
-                "phone": phone,
-                "channel": "ussd",
                 "pain_level": pain_level,
-                "has_fever": symptom == "fever",
-                "has_bleeding": symptom == "bleeding",
-                "has_nausea": symptom == "nausea",
-                "has_swelling": symptom == "swelling",
+                # Map the single USSD symptom to the symptoms array
+                # so it appears identically to Flutter app check-ins
+                "symptoms": [symptom] if symptom != "none" else [],
+                "mood": "Okay",          # USSD doesn't collect mood — safe default
                 "risk_level": risk_level,
-                "notes": f"USSD check-in. Dalili: {symptom}",
+                "days_since_surgery": 0, # USSD doesn't know days — backend calculates
+                "channel": "ussd",
+                "notes": f"USSD check-in via {phone}. Dalili: {symptom}",
                 "created_at": datetime.datetime.utcnow().isoformat(),
             }).execute()
 
         except Exception:
             # Never crash the USSD session because of a DB error.
             # The patient still receives their response either way.
-            pass
-
-    def _create_alert(
-        self, phone: str, pain_score: int, symptom: str, risk: str
-    ) -> None:
-        """
-        Create an alert in Supabase when risk is HIGH or EMERGENCY.
-
-        This alert appears on the hospital dashboard Alert Centre
-        so clinical staff can intervene before it becomes critical.
-        Same alerts table used for Flutter AND USSD — one unified view.
-        """
-        try:
-            db = get_supabase_client()
-
-            patient_result = (
-                db.table("patients")
-                .select("id, name, hospital_id")
-                .eq("phone", phone)
-                .maybe_single()
-                .execute()
-            )
-
-            patient = patient_result.data or {}
-
-            db.table("alerts").insert({
-                "patient_id": patient.get("id"),
-                "hospital_id": patient.get("hospital_id"),
-                "channel": "ussd",
-                "risk_level": risk,
-                "pain_level": pain_score,
-                "symptom": symptom,
-                "phone": phone,
-                "status": "active",
-                "message": (
-                    f"USSD check-in: {patient.get('name', phone)} "
-                    f"pain={pain_score}/10, dalili={symptom}. "
-                    f"Hatari: {risk}"
-                ),
-                "created_at": datetime.datetime.utcnow().isoformat(),
-            }).execute()
-
-        except Exception:
             pass
 
     def _build_result(self, risk: str, pain_label: str) -> str:
