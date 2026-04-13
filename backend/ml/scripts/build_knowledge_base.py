@@ -2988,8 +2988,12 @@ def store_chunks(db, chunks: list[dict], source_name: str, ai_client) -> tuple[i
                 errors += 1
                 continue
             try:
+                # Strip null bytes — PostgreSQL rejects \x00 in text columns
+                clean_content = chunk["content"].replace('\x00', '')
+                if not clean_content.strip():
+                    continue
                 db.table("knowledge_base").insert({
-                    "content": chunk["content"],
+                    "content": clean_content,
                     "source": chunk["source"],
                     "page": chunk.get("page", 0),
                     "metadata": chunk.get("metadata", {}),
