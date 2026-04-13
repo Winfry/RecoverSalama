@@ -64,7 +64,8 @@ import json
 import logging
 from enum import Enum
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from app.config import settings
 
@@ -311,29 +312,23 @@ class GeminiService:
     """
 
     def __init__(self):
-        """Initialize two Gemini models — one for chat, one for structured output."""
+        """Initialize Gemini client with configs for chat and structured output."""
         try:
-            genai.configure(api_key=settings.gemini_api_key)
+            self.client = genai.Client(api_key=settings.gemini_api_key)
 
-            # Chat model — natural text responses, slightly creative
-            self.chat_model = genai.GenerativeModel(
-                model_name="gemini-2.0-flash",
-                generation_config={
-                    "temperature": 0.4,       # Warm but not wild
-                    "top_p": 0.9,
-                    "max_output_tokens": 1024,
-                },
+            # Chat config — natural text responses, slightly creative
+            self.chat_config = types.GenerateContentConfig(
+                temperature=0.4,       # Warm but not wild
+                top_p=0.9,
+                max_output_tokens=1024,
             )
 
-            # Structured model — forced JSON, very consistent
-            self.structured_model = genai.GenerativeModel(
-                model_name="gemini-2.0-flash",
-                generation_config={
-                    "temperature": 0.1,       # Almost deterministic
-                    "top_p": 0.8,
-                    "max_output_tokens": 2048,
-                    "response_mime_type": "application/json",
-                },
+            # Structured config — forced JSON, very consistent
+            self.structured_config = types.GenerateContentConfig(
+                temperature=0.1,       # Almost deterministic
+                top_p=0.8,
+                max_output_tokens=2048,
+                response_mime_type="application/json",
             )
 
             self.available = True
@@ -396,8 +391,10 @@ class GeminiService:
         )
 
         try:
-            response = self.chat_model.generate_content(
-                f"{system_prompt}\n\nPatient says: {message}"
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=f"{system_prompt}\n\nPatient says: {message}",
+                config=self.chat_config,
             )
 
             reply_text = response.text
@@ -481,7 +478,11 @@ class GeminiService:
         )
 
         try:
-            response = self.structured_model.generate_content(prompt)
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=self.structured_config,
+            )
             result = json.loads(response.text)
 
             return {
@@ -549,7 +550,11 @@ class GeminiService:
         )
 
         try:
-            response = self.chat_model.generate_content(prompt)
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=self.chat_config,
+            )
             return response.text
         except Exception as e:
             logger.error(f"Gemini mood support failed: {e}")
@@ -593,7 +598,11 @@ class GeminiService:
         )
 
         try:
-            response = self.chat_model.generate_content(prompt)
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=self.chat_config,
+            )
             return response.text
         except Exception as e:
             logger.error(f"Gemini caregiver summary failed: {e}")

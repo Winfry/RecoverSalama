@@ -41,6 +41,7 @@ export default function App() {
                   <Route path="/" element={<DashboardHome />} />
                   <Route path="/patients" element={<PatientList />} />
                   <Route path="/patients/:id" element={<PatientDetail />} />
+                  <Route path="/patients/:id/discharge" element={<DischargeForm />} />
                   <Route path="/alerts" element={<AlertCentre />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/discharge" element={<DischargeForm />} />
