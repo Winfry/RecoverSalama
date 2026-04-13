@@ -39,4 +39,11 @@ export const updateAlert = (alertId, status) =>
 export const getAnalytics = (hospitalId) =>
   api.get('/api/hospitals/analytics', { params: { hospital_id: hospitalId } });
 
+// ── Discharge ──
+export const dischargePatient = (patientId, data) =>
+  api.post(`/api/patients/${patientId}/discharge`, data);
+
+export const getPatientHistory = (patientId, limit = 14) =>
+  api.get(`/api/patients/${patientId}/history`, { params: { limit } });
+
 export default api;

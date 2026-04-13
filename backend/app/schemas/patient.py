@@ -24,7 +24,18 @@ class PatientCreate(BaseModel):
     phone: str = ""
 
 
+class DischargeRequest(BaseModel):
+    discharge_date: date
+    assigned_doctor: str
+    discharge_notes: str = ""
+
+
 class PatientResponse(PatientCreate):
     id: str
     created_at: str | None = None
     hospital_id: str | None = None
+    # Discharge fields — populated after hospital formally discharges the patient
+    is_discharged: bool = False
+    discharge_date: date | None = None
+    assigned_doctor: str = ""
+    discharge_notes: str = ""
