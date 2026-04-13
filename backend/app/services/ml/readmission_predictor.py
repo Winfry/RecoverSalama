@@ -55,7 +55,8 @@ OUTPUT:
 import json
 import logging
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from app.config import settings
 
@@ -164,18 +165,9 @@ class ReadmissionPredictor:
     """
 
     def __init__(self):
-        """Initialize Gemini for Layer 2 pattern analysis."""
+        """Initialize Gemini client for Layer 2 pattern analysis."""
         try:
-            genai.configure(api_key=settings.gemini_api_key)
-            self.model = genai.GenerativeModel(
-                model_name="gemini-2.0-flash",
-                generation_config={
-                    "temperature": 0.2,
-                    "top_p": 0.8,
-                    "max_output_tokens": 512,
-                    "response_mime_type": "application/json",
-                },
-            )
+            self._client = genai.Client(api_key=settings.gemini_api_key)
             self.gemini_available = True
         except Exception as e:
             logger.warning(f"Gemini initialization failed: {e}. Using rules-only mode.")
@@ -624,7 +616,16 @@ class ReadmissionPredictor:
         )
 
         try:
-            response = self.model.generate_content(prompt)
+            response = self._client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.2,
+                    top_p=0.8,
+                    max_output_tokens=512,
+                    response_mime_type="application/json",
+                ),
+            )
             result = json.loads(response.text)
 
             probability = float(result.get("probability", 0))

@@ -39,26 +39,33 @@ class RAGService:
         Uses cosine similarity search on pgvector embeddings.
         Returns top_k chunks with their content, source, and page number.
         """
-        # Embed the query — RETRIEVAL_QUERY task type optimises for search
-        result = self._client.models.embed_content(
-            model=_EMBEDDING_MODEL,
-            contents=query,
-            config=genai_types.EmbedContentConfig(
-                task_type="RETRIEVAL_QUERY",
-                output_dimensionality=_EMBEDDING_DIMENSIONS,
-            ),
-        )
-        query_embedding = list(result.embeddings[0].values)
+        try:
+            # Embed the query using the async client — never blocks the event loop
+            result = await self._client.aio.models.embed_content(
+                model=_EMBEDDING_MODEL,
+                contents=query,
+                config=genai_types.EmbedContentConfig(
+                    task_type="RETRIEVAL_QUERY",
+                    output_dimensionality=_EMBEDDING_DIMENSIONS,
+                ),
+            )
+            query_embedding = list(result.embeddings[0].values)
+        except Exception:
+            # If embedding fails (quota, network), return empty — chat still works
+            # via Gemini's own knowledge, just without RAG grounding
+            return []
 
         # Search pgvector via Supabase RPC
-        db = get_supabase_client()
-        result = db.rpc(
-            "match_knowledge_base",
-            {
-                "query_embedding": query_embedding,
-                "match_threshold": 0.7,
-                "match_count": top_k,
-            },
-        ).execute()
-
-        return result.data if result.data else []
+        try:
+            db = get_supabase_client()
+            rpc_result = db.rpc(
+                "match_knowledge_base",
+                {
+                    "query_embedding": query_embedding,
+                    "match_threshold": 0.7,
+                    "match_count": top_k,
+                },
+            ).execute()
+            return rpc_result.data if rpc_result.data else []
+        except Exception:
+            return []

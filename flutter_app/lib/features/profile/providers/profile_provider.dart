@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/services/api_service.dart';
+import '../../recovery/providers/recovery_provider.dart';
 
 /// Patient profile data model
 class PatientProfile {
+  final String id;
   final String name;
   final int age;
   final String gender;
@@ -13,8 +16,13 @@ class PatientProfile {
   final String bloodType;
   final List<String> allergies;
   final String otherAllergies;
+  final String phone;
+  final String caregiverPhone;
+  final bool isLoaded;
+  final String errorMessage;
 
   const PatientProfile({
+    this.id = '',
     this.name = '',
     this.age = 0,
     this.gender = '',
@@ -26,15 +34,20 @@ class PatientProfile {
     this.bloodType = '',
     this.allergies = const [],
     this.otherAllergies = '',
+    this.phone = '',
+    this.caregiverPhone = '',
+    this.isLoaded = false,
+    this.errorMessage = '',
   });
 
-  /// Days since surgery
+  /// Days since surgery — calculated from surgeryDate, never hardcoded.
   int get daysSinceSurgery {
     if (surgeryDate == null) return 0;
     return DateTime.now().difference(surgeryDate!).inDays;
   }
 
   PatientProfile copyWith({
+    String? id,
     String? name,
     int? age,
     String? gender,
@@ -46,8 +59,13 @@ class PatientProfile {
     String? bloodType,
     List<String>? allergies,
     String? otherAllergies,
+    String? phone,
+    String? caregiverPhone,
+    bool? isLoaded,
+    String? errorMessage,
   }) {
     return PatientProfile(
+      id: id ?? this.id,
       name: name ?? this.name,
       age: age ?? this.age,
       gender: gender ?? this.gender,
@@ -59,44 +77,95 @@ class PatientProfile {
       bloodType: bloodType ?? this.bloodType,
       allergies: allergies ?? this.allergies,
       otherAllergies: otherAllergies ?? this.otherAllergies,
+      phone: phone ?? this.phone,
+      caregiverPhone: caregiverPhone ?? this.caregiverPhone,
+      isLoaded: isLoaded ?? this.isLoaded,
+      errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 }
 
-/// Profile state notifier
 class ProfileNotifier extends StateNotifier<PatientProfile> {
-  ProfileNotifier() : super(const PatientProfile());
+  final ApiService _api;
 
-  void saveProfile({
-    required String name,
-    required int age,
-    required String gender,
-    required String surgeryType,
-    required DateTime? surgeryDate,
-    required String hospital,
-    required String surgeon,
-    required double weight,
-    required String bloodType,
-    required List<String> allergies,
-    required String otherAllergies,
-  }) {
+  ProfileNotifier(this._api) : super(const PatientProfile());
+
+  /// Load the patient's profile from the backend.
+  /// Called once after login and after profile setup completes.
+  Future<void> loadProfile() async {
+    try {
+      final response = await _api.getMyProfile();
+      final data = response.data as Map<String, dynamic>;
+
+      DateTime? surgeryDate;
+      final rawDate = data['surgery_date'];
+      if (rawDate != null && rawDate.toString().isNotEmpty) {
+        try {
+          surgeryDate = DateTime.parse(rawDate.toString().substring(0, 10));
+        } catch (_) {
+          surgeryDate = null;
+        }
+      }
+
+      state = PatientProfile(
+        id: data['id']?.toString() ?? '',
+        name: data['name']?.toString() ?? '',
+        age: (data['age'] as num?)?.toInt() ?? 0,
+        gender: data['gender']?.toString() ?? '',
+        surgeryType: data['surgery_type']?.toString() ?? '',
+        surgeryDate: surgeryDate,
+        hospital: data['hospital']?.toString() ?? '',
+        surgeon: data['surgeon']?.toString() ?? '',
+        weight: (data['weight'] as num?)?.toDouble() ?? 0,
+        bloodType: data['blood_type']?.toString() ?? '',
+        allergies: List<String>.from(data['allergies'] ?? []),
+        otherAllergies: data['other_allergies']?.toString() ?? '',
+        phone: data['phone']?.toString() ?? '',
+        caregiverPhone: data['caregiver_phone']?.toString() ?? '',
+        isLoaded: true,
+        errorMessage: '',
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoaded: false,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  /// Update profile in state after setup wizard completes.
+  void setFromSetup(Map<String, dynamic> data) {
+    DateTime? surgeryDate;
+    final rawDate = data['surgery_date'];
+    if (rawDate is DateTime) {
+      surgeryDate = rawDate;
+    } else if (rawDate != null) {
+      try {
+        surgeryDate = DateTime.parse(rawDate.toString().substring(0, 10));
+      } catch (_) {}
+    }
+
     state = PatientProfile(
-      name: name,
-      age: age,
-      gender: gender,
-      surgeryType: surgeryType,
+      id: data['id']?.toString() ?? '',
+      name: data['name']?.toString() ?? '',
+      age: (data['age'] as num?)?.toInt() ?? 0,
+      gender: data['gender']?.toString() ?? '',
+      surgeryType: data['surgery_type']?.toString() ?? '',
       surgeryDate: surgeryDate,
-      hospital: hospital,
-      surgeon: surgeon,
-      weight: weight,
-      bloodType: bloodType,
-      allergies: allergies,
-      otherAllergies: otherAllergies,
+      hospital: data['hospital']?.toString() ?? '',
+      surgeon: data['surgeon']?.toString() ?? '',
+      weight: (data['weight'] as num?)?.toDouble() ?? 0,
+      bloodType: data['blood_type']?.toString() ?? '',
+      allergies: List<String>.from(data['allergies'] ?? []),
+      otherAllergies: data['other_allergies']?.toString() ?? '',
+      phone: data['phone']?.toString() ?? '',
+      caregiverPhone: data['caregiver_phone']?.toString() ?? '',
+      isLoaded: true,
     );
   }
 }
 
 final profileProvider =
     StateNotifierProvider<ProfileNotifier, PatientProfile>((ref) {
-  return ProfileNotifier();
+  return ProfileNotifier(ref.watch(apiServiceProvider));
 });

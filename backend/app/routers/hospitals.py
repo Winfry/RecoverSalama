@@ -6,8 +6,9 @@ and the hospital React dashboard analytics page.
 from collections import defaultdict
 from datetime import date, timedelta
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth import get_current_user
 from app.database import get_supabase_client
 from app.services.ml.readmission_predictor import ReadmissionPredictor, _categorize
 
@@ -30,7 +31,10 @@ async def list_hospitals(
 
 
 @router.get("/analytics")
-async def get_analytics(hospital_id: str | None = None):
+async def get_analytics(
+    hospital_id: str | None = None,
+    _user: dict = Depends(get_current_user),
+):
     """
     Analytics for the hospital React dashboard (H6).
 

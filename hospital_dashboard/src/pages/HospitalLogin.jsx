@@ -21,7 +21,7 @@ export default function HospitalLogin() {
     setLoading(true);
     setError('');
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -29,6 +29,19 @@ export default function HospitalLogin() {
     if (authError) {
       setError(authError.message);
     } else {
+      // Store the JWT token so api.js interceptor can attach it to requests
+      const token = data.session?.access_token;
+      if (token) {
+        localStorage.setItem('hospital_token', token);
+      }
+
+      // Fetch the hospital_id linked to this staff member's user account.
+      // We look up the patients table for a hospital linked to this user,
+      // or fall back to a hospitals table lookup by user metadata.
+      // For now we store the user's metadata hospital_id if present.
+      const hospitalId = data.user?.user_metadata?.hospital_id || '';
+      localStorage.setItem('hospital_id', hospitalId);
+
       navigate('/');
     }
     setLoading(false);

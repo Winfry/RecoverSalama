@@ -10,15 +10,20 @@ This is how SalamaRecover prevents complications —
 catching warning signs before they become emergencies.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import get_current_user
 from app.database import get_supabase_client
 
 router = APIRouter()
 
 
 @router.get("/")
-async def list_alerts(hospital_id: str | None = None, status: str = "active"):
+async def list_alerts(
+    hospital_id: str | None = None,
+    status: str = "active",
+    _user: dict = Depends(get_current_user),
+):
     """Get active alerts — used by React hospital dashboard Alert Centre."""
     db = get_supabase_client()
     query = db.table("alerts").select("*, patients(*)").eq("status", status)
@@ -31,7 +36,11 @@ async def list_alerts(hospital_id: str | None = None, status: str = "active"):
 
 
 @router.patch("/{alert_id}")
-async def update_alert(alert_id: str, status: str):
+async def update_alert(
+    alert_id: str,
+    status: str,
+    _user: dict = Depends(get_current_user),
+):
     """Mark alert as acknowledged or resolved by hospital staff."""
     if status not in ("acknowledged", "resolved"):
         raise HTTPException(

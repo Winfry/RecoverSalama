@@ -12,9 +12,11 @@ import { getPatients } from '../../services/api';
 import RiskBadge from '../common/RiskBadge';
 
 export default function PatientList() {
+  const hospitalId = localStorage.getItem('hospital_id') || undefined;
+
   const { data: patients, isLoading } = useQuery({
-    queryKey: ['patients'],
-    queryFn: () => getPatients().then((r) => r.data),
+    queryKey: ['patients', hospitalId],
+    queryFn: () => getPatients(hospitalId).then((r) => r.data),
   });
 
   if (isLoading) {

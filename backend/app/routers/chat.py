@@ -65,22 +65,41 @@ async def send_message(
         top_k=5,
     )
 
-    # Step 4: Generate response with Gemini + context + history
+    # Step 4: Build patient context and call gemini.chat() directly
+    # so the full CHAT_SYSTEM_PROMPT with RAG context, conversation history,
+    # and patient details is used — not the bare backward-compat wrapper.
+    from datetime import date as _date
+    surgery_date = patient_data.get("surgery_date")
+    try:
+        days_since = (
+            (_date.today() - _date.fromisoformat(str(surgery_date)[:10])).days
+            if surgery_date else request.days_since_surgery
+        )
+    except (ValueError, TypeError):
+        days_since = request.days_since_surgery
+
     patient_context = {
-        "surgery_type": patient_data.get("surgery_type", request.surgery_type),
-        "days_since_surgery": request.days_since_surgery,
         "name": patient_data.get("name", ""),
+        "surgery_type": patient_data.get("surgery_type") or request.surgery_type,
+        "days_since_surgery": days_since,
         "allergies": patient_data.get("allergies", []),
+        "pain_trend": "No data yet",
+        "mood_pattern": "No data yet",
     }
 
-    response = await gemini.generate_response(
+    gemini_result = await gemini.chat(
         message=request.message,
-        context=context_chunks,
-        language=request.language,
+        rag_context=context_chunks,
         patient_context=patient_context,
+        conversation_history=conversation_history,
     )
 
-    sources = [chunk.get("source", "") for chunk in context_chunks]
+    reply_text = gemini_result["reply"]
+    sources = gemini_result.get("sources") or [
+        chunk.get("source", "") for chunk in context_chunks if chunk.get("source")
+    ]
+    alert_hospital = gemini_result.get("alert_hospital", False)
+    language = gemini_result.get("language", "en")
 
     # Step 5: Save both messages to database
     db.table("chat_messages").insert([
@@ -92,14 +111,16 @@ async def send_message(
         {
             "patient_id": patient_id,
             "role": "assistant",
-            "content": response,
+            "content": reply_text,
             "sources": sources,
         },
     ]).execute()
 
     return ChatResponse(
-        reply=response,
+        reply=reply_text,
         sources=sources,
+        alert_hospital=alert_hospital,
+        language=language,
     )
 
 

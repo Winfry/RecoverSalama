@@ -92,6 +92,10 @@ class ApiService {
     return _dio.post('/api/patients/profile', data: profileData);
   }
 
+  Future<Response> getMyProfile() async {
+    return _dio.get('/api/patients/me');
+  }
+
   // ── Mental Health ──
   Future<Response> submitMoodCheckIn({
     required String mood,

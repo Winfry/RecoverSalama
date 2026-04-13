@@ -14,4 +14,8 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
-    sources: list[str] = []  # Knowledge base sources cited
+    sources: list[str] = []
+    # alert_hospital: True when Gemini's clinical assessment says the patient
+    # should contact their hospital. Flutter uses this to show the red CTA banner.
+    alert_hospital: bool = False
+    language: str = "en"
