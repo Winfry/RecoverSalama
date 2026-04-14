@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Environment — never bake secrets into the image
+.env
+
+# Dev tools
+ngrok.exe
+*.exe
+
+# Large ML data files — not needed at runtime
+ml/data/
+
+# Tests
+tests/
+
+# IDE
+.idea/
+.vscode/
