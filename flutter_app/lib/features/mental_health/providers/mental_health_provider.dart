@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/services/api_service.dart';
+import '../../recovery/providers/recovery_provider.dart'; // provides apiServiceProvider
 
 class MentalHealthState {
   final String? selectedMood;
