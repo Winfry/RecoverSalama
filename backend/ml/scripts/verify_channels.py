@@ -48,6 +48,10 @@ def test_ussd(base_url: str) -> None:
             }, timeout=10)
 
             body = r.text.strip()
+            # USSD responses are returned as a JSON string — strip the quotes
+            # e.g. '"CON Karibu..."' → 'CON Karibu...'
+            if body.startswith('"') and body.endswith('"'):
+                body = body[1:-1]
             starts_con = body.startswith("CON")
             starts_end = body.startswith("END")
             ok = r.status_code == 200 and (starts_con or starts_end)

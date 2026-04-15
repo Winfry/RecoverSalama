@@ -2,7 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+* { box-sizing: border-box; }
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #f8f9fa;
+  background-color: #0F1E2E;
+  color: #E8EDF2;
+  margin: 0;
 }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0D1B2A; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+/* Input / select dark override */
+input, select, textarea {
+  color-scheme: dark;
+}
+
+/* Remove default button styles */
+button { font-family: inherit; }
+

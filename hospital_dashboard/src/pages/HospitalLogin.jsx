@@ -1,13 +1,7 @@
-/**
- * Hospital Login Screen (H1)
- *
- * Hospital staff log in with their credentials.
- * Uses Supabase Auth with hospital-specific role.
- */
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
+import { C } from '../theme';
 
 export default function HospitalLogin() {
   const [email, setEmail] = useState('');
@@ -21,73 +15,87 @@ export default function HospitalLogin() {
     setLoading(true);
     setError('');
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError(authError.message);
     } else {
-      // Store the JWT token so api.js interceptor can attach it to requests
       const token = data.session?.access_token;
-      if (token) {
-        localStorage.setItem('hospital_token', token);
+      if (token) localStorage.setItem('hospital_token', token);
+
+      let hospitalId = data.user?.user_metadata?.hospital_id || '';
+      if (!hospitalId) {
+        try {
+          const { data: hospitals } = await supabase.from('hospitals').select('id').limit(1);
+          if (hospitals?.length > 0) hospitalId = hospitals[0].id;
+        } catch (_) {}
       }
-
-      // Fetch the hospital_id linked to this staff member's user account.
-      // We look up the patients table for a hospital linked to this user,
-      // or fall back to a hospitals table lookup by user metadata.
-      // For now we store the user's metadata hospital_id if present.
-      const hospitalId = data.user?.user_metadata?.hospital_id || '';
       localStorage.setItem('hospital_id', hospitalId);
-
       navigate('/');
     }
     setLoading(false);
   };
 
+  const inputStyle = {
+    width: "100%",
+    background: C.navy,
+    border: `1px solid ${C.border}`,
+    borderRadius: 6,
+    color: C.textMain,
+    padding: "10px 14px",
+    fontSize: 13,
+    outline: "none",
+    fontFamily: "inherit",
+    boxSizing: "border-box",
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-sm border border-gray-200">
-        <div className="text-center mb-8">
-          <span className="text-4xl">💚</span>
-          <h1 className="text-2xl font-bold text-[#0077B6] mt-2">
-            SalamaRecover
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">Hospital Dashboard Login</p>
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ width:"100%", maxWidth:380, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:32 }}>
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{
+            width:44, height:44, borderRadius:10, margin:"0 auto 12px",
+            background:"linear-gradient(135deg, #2D7DD2, #27AE60)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:20, fontWeight:700, color:"#fff",
+          }}>S</div>
+          <div style={{ fontSize:18, fontWeight:700, color:C.textMain }}>SalamaRecover</div>
+          <div style={{ fontSize:11, color:C.textDim, marginTop:4, letterSpacing:"0.8px", textTransform:"uppercase" }}>
+            Clinical Dashboard
+          </div>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin}>
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+            <div style={{ background:"rgba(192,57,43,0.15)", border:"1px solid rgba(192,57,43,0.3)", borderRadius:6, padding:"10px 14px", fontSize:12, color:"#E74C3C", marginBottom:16 }}>
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div style={{ marginBottom:14 }}>
+            <label style={{ display:"block", fontSize:11, color:C.textMuted, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.6px" }}>
               Email
             </label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0077B6] focus:border-transparent"
+              onChange={e => setEmail(e.target.value)}
+              style={inputStyle}
               placeholder="doctor@hospital.co.ke"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div style={{ marginBottom:22 }}>
+            <label style={{ display:"block", fontSize:11, color:C.textMuted, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.6px" }}>
               Password
             </label>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0077B6] focus:border-transparent"
+              onChange={e => setPassword(e.target.value)}
+              style={inputStyle}
               placeholder="••••••••"
               required
             />
@@ -96,11 +104,26 @@ export default function HospitalLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#0077B6] text-white font-semibold rounded-lg hover:bg-[#005a8d] transition disabled:opacity-50"
+            style={{
+              width:"100%",
+              background: C.accent,
+              border:"none",
+              borderRadius:6,
+              padding:"11px 0",
+              fontSize:13,
+              fontWeight:600,
+              color:"#fff",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        <div style={{ textAlign:"center", marginTop:20, fontSize:11, color:C.textDim }}>
+          SalamaRecover · Hospital Staff Only
+        </div>
       </div>
     </div>
   );
