@@ -595,21 +595,25 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         'weight': double.tryParse(_weightCtrl.text) ?? 0,
         'allergies': allergies,
         'other_allergies': _allergiesCtrl.text.trim(),
+        'caregiver_phone': _caregiverCtrl.text.trim(),
       });
 
-      ref.read(profileProvider.notifier).saveProfile(
-            name: _nameCtrl.text.trim(),
-            age: int.tryParse(_ageCtrl.text) ?? 0,
-            gender: _gender,
-            surgeryType: _surgery,
-            surgeryDate: _surgeryDate,
-            hospital: '',
-            surgeon: '',
-            weight: double.tryParse(_weightCtrl.text) ?? 0,
-            bloodType: '',
-            allergies: allergies,
-            otherAllergies: _allergiesCtrl.text.trim(),
-          );
+      ref.read(profileProvider.notifier).setFromSetup({
+        'id': '',
+        'name': _nameCtrl.text.trim(),
+        'age': int.tryParse(_ageCtrl.text) ?? 0,
+        'gender': _gender,
+        'surgery_type': _surgery,
+        'surgery_date': _surgeryDate,
+        'hospital': '',
+        'surgeon': '',
+        'weight': double.tryParse(_weightCtrl.text) ?? 0,
+        'blood_type': '',
+        'allergies': allergies,
+        'other_allergies': _allergiesCtrl.text.trim(),
+        'phone': '',
+        'caregiver_phone': _caregiverCtrl.text.trim(),
+      });
 
       if (!mounted) return;
       context.go(AppRoutes.preSurgery);

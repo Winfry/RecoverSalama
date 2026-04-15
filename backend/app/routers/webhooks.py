@@ -13,6 +13,7 @@ This is how SalamaRecover serves patients WITHOUT smartphones.
 """
 
 from fastapi import APIRouter, Request
+from fastapi.responses import PlainTextResponse
 
 from app.services.channels.whatsapp_service import WhatsAppService
 from app.services.channels.ussd_service import USSDService
@@ -68,4 +69,5 @@ async def ussd_webhook(request: Request):
         except Exception:
             pass
 
-    return response
+    # AT requires plain text response — not JSON
+    return PlainTextResponse(content=response, media_type="text/plain")

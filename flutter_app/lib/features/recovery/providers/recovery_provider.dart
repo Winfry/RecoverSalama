@@ -161,6 +161,26 @@ class RecoveryNotifier extends StateNotifier<RecoveryState> {
   /// Clears the error message after the screen has shown it
   void clearError() => state = state.copyWith(errorMessage: '');
 
+  /// Update state from the dashboard API response (called by dashboardLoader)
+  void updateFromDashboard(Map<String, dynamic> data) {
+    state = state.copyWith(
+      stageName: data['stage_name'] as String? ?? state.stageName,
+      stageDescription: data['stage_description'] as String? ?? state.stageDescription,
+      allowedActivities: (data['allowed_activities'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          state.allowedActivities,
+      restrictedActivities: (data['restricted_activities'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          state.restrictedActivities,
+      riskLevel: data['risk_level'] as String? ?? state.riskLevel,
+      aiTip: data['ai_tip'] as String? ?? state.aiTip,
+      lastPainLevel: data['latest_pain'] as int? ?? state.lastPainLevel,
+      lastMood: data['latest_mood'] as String? ?? state.lastMood,
+    );
+  }
+
   String _friendlyError(Object e) {
     final msg = e.toString();
     if (msg.contains('SocketException') || msg.contains('connection')) {

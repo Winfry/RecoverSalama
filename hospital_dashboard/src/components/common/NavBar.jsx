@@ -1,48 +1,100 @@
-/**
- * Hospital Dashboard Navigation Bar.
- * Shows: Dashboard | Patients | Alerts | Analytics
- * Alert badge shows count of unacknowledged alerts.
- */
-
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { C } from '../../theme';
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/patients', label: 'Patients', icon: '👥' },
-  { path: '/alerts', label: 'Alerts', icon: '🚨' },
-  { path: '/analytics', label: 'Analytics', icon: '📈' },
+  { path: '/',          label: 'Overview',  icon: '◈' },
+  { path: '/patients',  label: 'Patients',  icon: '⊞' },
+  { path: '/alerts',    label: 'Alerts',    icon: '⚠' },
+  { path: '/analytics', label: 'Analytics', icon: '↗' },
+  { path: '/discharge', label: 'Discharge', icon: '+' },
 ];
 
 export default function NavBar() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('hospital_token');
+    localStorage.removeItem('hospital_id');
+    navigate('/login');
+  };
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 py-3">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">💚</span>
-          <span className="font-bold text-[#0077B6] text-lg">
-            SalamaRecover
-          </span>
-          <span className="text-xs text-gray-400 ml-2">Hospital Dashboard</span>
+    <nav style={{
+      background: C.navy,
+      borderBottom: `1px solid ${C.border}`,
+      padding: "0 24px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: 52,
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
+    }}>
+      {/* Logo */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 6,
+          background: "linear-gradient(135deg, #2D7DD2, #27AE60)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 14, fontWeight: 700, color: "#fff",
+        }}>S</div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.textMain, lineHeight: 1 }}>SalamaRecover</div>
+          <div style={{ fontSize: 9, color: C.textDim, letterSpacing: "0.8px", textTransform: "uppercase" }}>Clinical Dashboard</div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-6">
-          {navItems.map((item) => (
+      {/* Nav links */}
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        {navItems.map((item) => {
+          const active = location.pathname === item.path ||
+            (item.path !== '/' && location.pathname.startsWith(item.path));
+          return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg transition ${
-                location.pathname === item.path
-                  ? 'bg-blue-50 text-[#0077B6]'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: active ? 600 : 400,
+                color: active ? C.accentLight : C.textMuted,
+                background: active ? "rgba(45,125,210,0.12)" : "transparent",
+                textDecoration: "none",
+                transition: "all 0.15s",
+              }}
             >
-              <span>{item.icon}</span>
+              <span style={{ fontSize: 11 }}>{item.icon}</span>
               {item.label}
             </Link>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* Right side */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ fontSize: 11, color: C.textDim }}>
+          {new Date().toLocaleDateString('en-KE', { weekday: 'short', day: '2-digit', month: 'short' })}
         </div>
+        <button
+          onClick={handleLogout}
+          style={{
+            background: "transparent",
+            border: `1px solid ${C.border}`,
+            borderRadius: 6,
+            padding: "5px 12px",
+            fontSize: 11,
+            color: C.textMuted,
+            cursor: "pointer",
+          }}
+        >
+          Sign out
+        </button>
       </div>
     </nav>
   );

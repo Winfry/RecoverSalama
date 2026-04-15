@@ -26,7 +26,7 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: "100vh", background: "#0F1E2E" }}>
       <Routes>
         {/* Login — no navbar, no auth required */}
         <Route path="/login" element={<HospitalLogin />} />
@@ -38,7 +38,7 @@ export default function App() {
             <ProtectedRoute>
               <>
                 <NavBar />
-                <main className="max-w-7xl mx-auto px-4 py-6">
+                <main style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 24px" }}>
                   <Routes>
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/patients" element={<PatientList />} />

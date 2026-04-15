@@ -15,7 +15,10 @@ class ApiService {
         baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000',
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 30),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true', // bypass ngrok interstitial
+        },
       ),
     );
 
@@ -94,6 +97,11 @@ class ApiService {
 
   Future<Response> getMyProfile() async {
     return _dio.get('/api/patients/me');
+  }
+
+  // ── Dashboard ──
+  Future<Response> getDashboard() async {
+    return _dio.get('/api/recovery/dashboard');
   }
 
   // ── Mental Health ──

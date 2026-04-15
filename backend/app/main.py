@@ -17,8 +17,9 @@ Deployed on Render.com (free tier).
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import patients, recovery, chat, alerts, hospitals, webhooks
@@ -67,6 +68,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ngrok bypass — adds the header that tells ngrok not to show the
+# browser interstitial page when the Flutter app calls the API
+@app.middleware("http")
+async def add_ngrok_header(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["ngrok-skip-browser-warning"] = "true"
+    return response
 
 # Register route groups
 app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])
