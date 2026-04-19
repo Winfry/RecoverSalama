@@ -26,16 +26,45 @@ ussd = USSDService()
 @router.post("/whatsapp")
 async def whatsapp_webhook(request: Request):
     """
-    Receives WhatsApp messages via Africa's Talking.
-    Processes them through the AI pipeline and responds in
-    the same language (English or Kiswahili).
+    Receives WhatsApp messages via Africa's Talking or Twilio.
+    AT uses: from, text
+    Twilio uses: From, Body
+    We handle both.
     """
     form_data = await request.form()
+
+    # Africa's Talking format
     phone = form_data.get("from", "")
     message = form_data.get("text", "")
 
-    response = await whatsapp.handle_incoming(phone=phone, message=message)
-    return {"status": "processed", "response": response}
+    # Twilio format (overrides AT if present)
+    if not phone:
+        phone = form_data.get("From", "")
+    if not message:
+        message = form_data.get("Body", "")
+
+    # Twilio phone comes as "whatsapp:+254..." — strip the prefix
+    if phone.startswith("whatsapp:"):
+        phone = phone.replace("whatsapp:", "")
+
+    if not message:
+        return {"status": "ignored", "reason": "empty message"}
+
+    reply = await whatsapp.handle_incoming(phone=phone, message=message)
+
+    # Twilio expects TwiML XML response to send a reply
+    # AT expects JSON
+    if form_data.get("From", "").startswith("whatsapp:"):
+        # Twilio — return TwiML
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>{reply}</Message>
+</Response>"""
+        from fastapi.responses import Response
+        return Response(content=twiml, media_type="application/xml")
+
+    # Africa's Talking — return JSON
+    return {"status": "processed", "response": reply}
 
 
 @router.post("/ussd")
