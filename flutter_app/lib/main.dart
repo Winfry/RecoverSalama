@@ -11,24 +11,29 @@ import 'shared/services/cache_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables
-  await dotenv.load(fileName: '.env');
+  try {
+    // Load environment variables
+    await dotenv.load(fileName: '.env');
 
-  // Initialize Hive and open the cache box
-  await Hive.initFlutter();
-  await CacheService.init();
+    // Initialize Hive and open the cache box
+    await Hive.initFlutter();
+    await CacheService.init();
 
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-  );
+    // Initialize Supabase
+    await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL'] ?? '',
+      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+    );
 
-  // Initialize local notifications (must happen before any notification calls)
-  await NotificationService.initialize();
+    // Initialize local notifications
+    await NotificationService.initialize();
 
-  // Schedule the daily 9 AM check-in reminder
-  await NotificationService.scheduleDailyCheckInReminder();
+    // Schedule the daily 9 AM check-in reminder
+    await NotificationService.scheduleDailyCheckInReminder();
+  } catch (e) {
+    // Log startup errors — don't crash with black screen
+    debugPrint('Startup error: $e');
+  }
 
   runApp(
     const ProviderScope(
