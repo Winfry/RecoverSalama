@@ -36,7 +36,7 @@ if env_path.exists():
     from dotenv import load_dotenv
     load_dotenv(env_path)
 
-import httpx
+import requests
 from supabase import create_client
 
 # ── KMHFL ──────────────────────────────────────────────────────────────────
@@ -100,11 +100,11 @@ def fetch_kmhfl(active_only: bool = True) -> list[dict]:
     if active_only:
         params["is_published"] = "true"
 
-    with httpx.Client(timeout=60.0) as client:
-        while True:
+    session = requests.Session()
+    while True:
             params["page"] = page
             try:
-                r = client.get(KMHFL_BASE, params=params)
+                r = session.get(KMHFL_BASE, params=params, timeout=60)
                 r.raise_for_status()
                 data = r.json()
             except Exception as exc:
@@ -129,6 +129,7 @@ def fetch_kmhfl(active_only: bool = True) -> list[dict]:
             page += 1
             time.sleep(0.1)
 
+    session.close()
     print(f"\n  KMHFL: {len(results)} facilities transformed")
     return results
 
@@ -210,15 +211,14 @@ out center tags;
 """
 
     try:
-        with httpx.Client(timeout=240.0) as client:
-            r = client.post(
-                OVERPASS_URL,
-                content=query.strip().encode(),
-                headers={"Content-Type": "text/plain"},
-            )
-            r.raise_for_status()
-            elements = r.json().get("elements", [])
-            print(f"  OSM: {len(elements)} raw elements")
+        r = requests.post(
+            OVERPASS_URL,
+            data={"data": query.strip()},
+            timeout=240,
+        )
+        r.raise_for_status()
+        elements = r.json().get("elements", [])
+        print(f"  OSM: {len(elements)} raw elements")
     except Exception as exc:
         print(f"  OSM error: {exc}")
         return []
