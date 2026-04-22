@@ -1,272 +1,320 @@
 """
-scrape_kmhfl.py — Scrape all health facilities from the Kenya Master Health Facility
-List Register public website (https://kmhfr.health.go.ke/public/facilities).
+scrape_kmhfl.py — Scrape all 17,338 facilities from https://kmhfr.health.go.ke/public/facilities
 
-The KMHFL REST API requires auth, but the website is public. This script uses
-Playwright to drive a headless browser, intercept the API calls the site makes,
-and collect all 17,000+ facilities with their coordinates.
+Each page shows 30 facilities (≈578 pages total). The script:
+  1. Loads the page in a headless browser (waits for JS to render)
+  2. Extracts facility name, type, county, sub-county, ward from the DOM
+  3. Clicks "Next" and repeats
 
 Prerequisites:
     pip install playwright
     playwright install chromium
 
 Usage:
-    python ml/scripts/scrape_kmhfl.py
-
-    # Dry run — preview first 20 results
-    python ml/scripts/scrape_kmhfl.py --dry-run
-
-    # Save to JSON (for manual inspection before DB insert)
-    python ml/scripts/scrape_kmhfl.py --output facilities.json
-
-    # Insert into Supabase after scraping
-    python ml/scripts/scrape_kmhfl.py --seed
+    python ml/scripts/scrape_kmhfl.py --dry-run          # page 1 only, preview
+    python ml/scripts/scrape_kmhfl.py --pages 10         # first 10 pages (300 facilities)
+    python ml/scripts/scrape_kmhfl.py --output out.json  # save all to JSON
+    python ml/scripts/scrape_kmhfl.py --seed             # insert into Supabase
 """
 
 import asyncio
 import json
 import os
+import re
 import sys
 import time
 import argparse
 from pathlib import Path
 
-# Load .env
 env_path = Path(__file__).parent.parent.parent / ".env"
 if env_path.exists():
     from dotenv import load_dotenv
     load_dotenv(env_path)
 
 try:
-    from playwright.async_api import async_playwright, Route, Request
+    from playwright.async_api import async_playwright, TimeoutError as PWTimeout
 except ImportError:
     print("Playwright not installed. Run: pip install playwright && playwright install chromium")
     sys.exit(1)
 
-KMHFL_PUBLIC_URL = "https://kmhfr.health.go.ke/public/facilities"
-PAGE_SIZE = 100  # request large pages to reduce round trips
+KMHFL_URL = "https://kmhfr.health.go.ke/public/facilities"
+
+# Facility type badge → our DB type
+TYPE_MAP = {
+    "national referral": "public",
+    "county referral": "public",
+    "county hospital": "public",
+    "sub-county hospital": "public",
+    "sub county hospital": "public",
+    "dispensary": "public",
+    "health centre": "public",
+    "health center": "public",
+    "primary care": "public",
+    "basic primary": "public",
+    "nursing home": "private",
+    "medical clinic": "private",
+    "medical centre": "private",
+    "dental": "private",
+    "eye": "private",
+    "radiology": "private",
+    "laboratory": "private",
+}
 
 
-def _map_type(owner: str, facility_type: str = "") -> str:
-    o = (owner or "").lower()
-    f = (facility_type or "").lower()
-    if any(w in o for w in ["ministry", "county government", "government", "national",
-                             "armed forces", "public institution", "academic"]):
+def _map_type(facility_type: str, name: str) -> str:
+    ft = (facility_type or "").lower()
+    nm = (name or "").lower()
+
+    for keyword, t in TYPE_MAP.items():
+        if keyword in ft:
+            return t
+
+    # Name-based fallback
+    if any(w in nm for w in ["national", "kenyatta", "pumwani", "county referral"]):
         return "public"
-    if any(w in o for w in ["faith", "church", "catholic", "protestant", "seventh",
-                             "aga khan", "religious", "fbo", "episcopal", "christian health",
-                             "mission", "salvation"]):
+    if any(w in nm for w in ["mission", "catholic", "church", "methodist", "presbyterian",
+                              "seventh day", "aga khan", "salvation"]):
         return "mission"
-    if "emergency" in f:
-        return "emergency"
     return "private"
 
 
-def _transform(raw: dict) -> dict | None:
-    name = (raw.get("name") or "").strip()
-    if not name or len(name) < 3:
-        return None
+def _clean_phone(phone: str) -> str | None:
+    p = re.sub(r"[\s\-\(\)]", "", phone or "")
+    if p.startswith("0") and len(p) == 10:
+        return f"+254{p[1:]}"
+    if p.startswith("254") and not p.startswith("+"):
+        return f"+{p}"
+    return p or None
 
-    lat_raw = raw.get("lat") or raw.get("latitude")
-    lng_raw = raw.get("long") or raw.get("lon") or raw.get("longitude")
-    try:
-        lat = float(lat_raw) if lat_raw not in (None, "", "null", 0) else None
-        lng = float(lng_raw) if lng_raw not in (None, "", "null", 0) else None
-    except (ValueError, TypeError):
-        lat = lng = None
 
-    owner = raw.get("owner_name") or raw.get("owner") or ""
-    if isinstance(owner, dict):
-        owner = owner.get("name", "")
-    ftype_raw = raw.get("facility_type_details") or raw.get("facility_type") or ""
-    if isinstance(ftype_raw, dict):
-        ftype_raw = ftype_raw.get("name", "")
+# JavaScript that extracts all facility cards from the current page
+EXTRACT_JS = """
+() => {
+    const results = [];
 
-    county = raw.get("county_name") or raw.get("county") or ""
-    if isinstance(county, dict):
-        county = county.get("name", "")
-    sub_county = raw.get("sub_county_name") or raw.get("sub_county") or ""
-    if isinstance(sub_county, dict):
-        sub_county = sub_county.get("name", "")
-    town = raw.get("town_name") or raw.get("town") or ""
+    // Each facility card contains an <a> link to /public/facilities/{uuid}
+    const links = document.querySelectorAll('a[href^="/public/facilities/"]');
 
-    addr_parts = [p for p in [town, sub_county, county, "Kenya"] if p]
-    address = ", ".join(dict.fromkeys(addr_parts))
+    links.forEach(link => {
+        const name = link.innerText.trim();
+        if (!name || name.length < 3) return;
 
-    phone_raw = raw.get("phone") or raw.get("contacts") or ""
-    if isinstance(phone_raw, list):
-        phone_raw = next((c.get("contact") for c in phone_raw
-                         if c.get("contact_type") in ("PHONE", "phone")), "") or ""
-    phone = str(phone_raw).strip().replace(" ", "").replace("-", "")
-    if phone.startswith("0") and len(phone) == 10:
-        phone = f"+254{phone[1:]}"
-    elif phone.startswith("254") and not phone.startswith("+"):
-        phone = f"+{phone}"
+        // Walk up the DOM to find the outer card div (the one with border-b class)
+        // Structure: a > div.flex-wrap > div.flex-col.gap-1.border-b (the card)
+        let card = link.parentElement;
+        for (let i = 0; i < 5; i++) {
+            if (!card) break;
+            if (card.classList.contains('border-b') || card.querySelector('label')) break;
+            card = card.parentElement;
+        }
+        if (!card) return;
 
-    return {
-        "name": name,
-        "type": _map_type(owner, ftype_raw),
-        "address": address,
-        "phone": phone or None,
-        "lat": lat,
-        "lng": lng,
+        // Badges
+        const badges = Array.from(card.querySelectorAll('span[class*="rounded-full"]'))
+            .map(s => s.innerText.trim());
+        const facilityType = badges[0] || '';
+
+        // Location labels — find label element then read its next sibling span
+        function getLabelValue(labelText) {
+            const labels = card.querySelectorAll('label');
+            for (const lbl of labels) {
+                if (lbl.innerText.trim() === labelText) {
+                    const span = lbl.nextElementSibling;
+                    return span ? span.innerText.trim() : '';
+                }
+            }
+            return '';
+        }
+
+        const county    = getLabelValue('County:');
+        const subCounty = getLabelValue('Sub-county:');
+        const ward      = getLabelValue('Ward:');
+
+        results.push({ name, facilityType, county, subCounty, ward });
+    });
+
+    return results;
+}
+"""
+
+# Get total count from "30 of 17338" counter
+COUNT_JS = """
+() => {
+    const els = document.querySelectorAll('p');
+    for (const el of els) {
+        const m = el.innerText.match(/\\d+ of ([\\d,]+)/);
+        if (m) return parseInt(m[1].replace(',', ''));
     }
+    return 0;
+}
+"""
+
+# Check if Next button exists and is clickable
+NEXT_BTN_JS = """
+() => {
+    // Look for a button or link with "Next" text that is not disabled
+    const all = Array.from(document.querySelectorAll('button, a'));
+    for (const el of all) {
+        const text = el.innerText.trim().toLowerCase();
+        if (text === 'next' || text === 'next page' || text === '>') {
+            const disabled = el.disabled || el.getAttribute('aria-disabled') === 'true'
+                             || el.classList.contains('disabled');
+            if (!disabled) return true;
+        }
+    }
+    return false;
+}
+"""
+
+CLICK_NEXT_JS = """
+() => {
+    const all = Array.from(document.querySelectorAll('button, a'));
+    for (const el of all) {
+        const text = el.innerText.trim().toLowerCase();
+        if (text === 'next' || text === 'next page' || text === '>') {
+            const disabled = el.disabled || el.getAttribute('aria-disabled') === 'true'
+                             || el.classList.contains('disabled');
+            if (!disabled) { el.click(); return true; }
+        }
+    }
+    return false;
+}
+"""
 
 
-async def scrape() -> list[dict]:
-    """Intercept KMHFL API calls made by the browser and collect all facilities."""
-    collected_raw: list[dict] = []
-    api_responses: list[dict] = []
+async def scrape(max_pages: int | None) -> list[dict]:
+    all_records: list[dict] = []
+    seen: set[str] = set()
 
-    print("Starting Playwright browser…")
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
-        page = await context.new_page()
+        page = await browser.new_page(viewport={"width": 1280, "height": 900})
 
-        # Intercept API responses
-        async def handle_response(response):
-            url = response.url
-            if "facilities" in url and "api." in url:
-                try:
-                    body = await response.json()
-                    results = body.get("results") or body.get("data") or []
-                    if results:
-                        api_responses.append({
-                            "url": url,
-                            "count": body.get("count", len(results)),
-                            "results": results,
-                        })
-                        print(f"  Intercepted: {len(results)} facilities from {url[:80]}")
-                except Exception:
-                    pass
+        print(f"Loading {KMHFL_URL} …")
+        await page.goto(KMHFL_URL, wait_until="domcontentloaded", timeout=60_000)
 
-        page.on("response", handle_response)
+        # Wait for facility links to appear in the DOM
+        print("Waiting for facility list to render…")
+        try:
+            await page.wait_for_selector('a[href^="/public/facilities/"]', timeout=20_000)
+        except PWTimeout:
+            print("ERROR: Facility links never appeared. The page structure may have changed.")
+            await browser.close()
+            return []
 
-        print(f"Navigating to {KMHFL_PUBLIC_URL}…")
-        await page.goto(KMHFL_PUBLIC_URL, wait_until="networkidle", timeout=60_000)
-        await page.wait_for_timeout(3000)
+        await page.wait_for_timeout(1_000)
 
-        # Try to trigger a larger page size via URL params if pagination is URL-based
-        total = api_responses[0]["count"] if api_responses else 0
-        print(f"Total facilities reported: {total}")
+        total = await page.evaluate(COUNT_JS)
+        if total:
+            est_pages = (total // 30) + 1
+            print(f"Total on site: {total:,} facilities (~{est_pages} pages)")
 
-        if total > 0 and api_responses:
-            first_url = api_responses[0]["url"]
-            import re
-            # Extract base API URL and try fetching all pages directly
-            base = re.sub(r'[?&]page=\d+', '', first_url)
-            base = re.sub(r'[?&]page_size=\d+', '', base)
-            sep = "&" if "?" in base else "?"
+        page_num = 1
+        while True:
+            if max_pages and page_num > max_pages:
+                break
 
-            # Check if we got a token in the intercepted request
-            all_pages_url = f"{base}{sep}page_size={PAGE_SIZE}&page=1"
-            print(f"Will try paginated fetch via: {all_pages_url}")
+            items = await page.evaluate(EXTRACT_JS)
+            new_this_page = 0
 
-            # Collect all intercepted results first
-            for resp in api_responses:
-                collected_raw.extend(resp["results"])
+            for item in items:
+                name = item.get("name", "").strip()
+                if not name or len(name) < 3:
+                    continue
+                key = name.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                new_this_page += 1
 
-            # Try to navigate through pagination in the browser
-            pages_needed = (total // PAGE_SIZE) + 2
-            for pg in range(2, min(pages_needed, 200)):
-                await page.evaluate(f"""
-                    window.__fetch_page = {pg};
-                """)
-                # Try clicking next page if visible
-                try:
-                    next_btn = await page.query_selector('button:has-text("Next"), a:has-text("Next")')
-                    if next_btn:
-                        prev_count = len(collected_raw)
-                        await next_btn.click()
-                        await page.wait_for_timeout(2000)
-                        new_items = sum(len(r["results"]) for r in api_responses) - len(collected_raw)
-                        if new_items > 0:
-                            for resp in api_responses[-2:]:
-                                collected_raw.extend(resp["results"])
-                        if len(collected_raw) >= total:
-                            break
-                    else:
-                        break
-                except Exception as e:
-                    print(f"  Pagination stopped at page {pg}: {e}")
-                    break
+                county = item.get("county", "")
+                sub_county = item.get("subCounty", "")
+                addr_parts = [p for p in [sub_county, county, "Kenya"] if p]
+
+                all_records.append({
+                    "name": name,
+                    "type": _map_type(item.get("facilityType", ""), name),
+                    "address": ", ".join(dict.fromkeys(addr_parts)),
+                    "phone": None,
+                    "lat": None,
+                    "lng": None,
+                })
+
+            print(f"  Page {page_num}: +{new_this_page} facilities (total: {len(all_records)})")
+
+            if not items:
+                print("  No items found on this page — stopping.")
+                break
+
+            # Try to go to next page
+            has_next = await page.evaluate(NEXT_BTN_JS)
+            if not has_next:
+                print("  Last page reached.")
+                break
+
+            clicked = await page.evaluate(CLICK_NEXT_JS)
+            if not clicked:
+                print("  Could not click Next — stopping.")
+                break
+
+            # Wait for the page to update (new links to load)
+            await page.wait_for_timeout(2_500)
+            page_num += 1
 
         await browser.close()
 
-    if not collected_raw:
-        print("No data intercepted. The site may have changed its API structure.")
-        print("Try visiting https://kmhfr.health.go.ke/public/facilities in a browser")
-        print("and check Network tab for the API URL, then update this script.")
-        return []
-
-    # Transform + deduplicate
-    results = []
-    seen = set()
-    for raw in collected_raw:
-        r = _transform(raw)
-        if r:
-            key = r["name"].lower().strip()
-            if key not in seen:
-                results.append(r)
-                seen.add(key)
-
-    print(f"\nTransformed: {len(results)} unique facilities")
-    return results
+    print(f"\nTotal unique facilities scraped: {len(all_records):,}")
+    return all_records
 
 
 def seed_to_db(records: list[dict]) -> None:
-    import time as _time
     from supabase import create_client
-
-    db = create_client(
-        os.environ["SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_KEY"],
-    )
-
-    existing = db.table("hospitals").select("name").execute()
-    existing_names = {r["name"].lower() for r in (existing.data or [])}
-    new = [h for h in records if h["name"].lower() not in existing_names]
-
-    print(f"DB existing: {len(existing_names)} | New to insert: {len(new)}")
+    db = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
+    print(f"Upserting {len(records):,} facilities (skipping duplicates by name)…")
     inserted = errors = 0
-    for i in range(0, len(new), 50):
-        batch = new[i:i + 50]
+    batch_size = 50
+    for i in range(0, len(records), batch_size):
+        batch = records[i:i + batch_size]
         try:
-            db.table("hospitals").insert(batch).execute()
+            # ignore_duplicates=True → INSERT ... ON CONFLICT (name) DO NOTHING
+            db.table("hospitals").upsert(batch, on_conflict="name", ignore_duplicates=True).execute()
             inserted += len(batch)
-            print(f"  Inserted {inserted}/{len(new)}", end="\r")
+            print(f"  Processed {min(inserted, len(records))}/{len(records)}", end="\r")
         except Exception as exc:
-            print(f"\n  Batch error: {exc}")
+            print(f"\n  Batch error: {exc} — trying one by one")
             for h in batch:
                 try:
-                    db.table("hospitals").insert(h).execute()
+                    db.table("hospitals").upsert(h, on_conflict="name", ignore_duplicates=True).execute()
                     inserted += 1
                 except Exception:
                     errors += 1
-        _time.sleep(0.2)
-
-    print(f"\nDone: {inserted} inserted, {errors} errors")
+        time.sleep(0.1)
+    print(f"\nDone. {errors} errors.")
+    print("Any existing facilities were left unchanged; new ones were inserted.")
 
 
 async def main_async(args):
-    records = await scrape()
-
-    if not records:
-        sys.exit(1)
+    # Load from saved JSON instead of re-scraping
+    if args.from_json:
+        with open(args.from_json, encoding="utf-8") as f:
+            records = json.load(f)
+        print(f"Loaded {len(records):,} facilities from {args.from_json}")
+    else:
+        records = await scrape(max_pages=args.pages if not args.dry_run else 1)
+        if not records:
+            print("\nNo data scraped. Check your internet connection.")
+            sys.exit(1)
 
     if args.dry_run:
-        print("\n[DRY RUN] First 20 facilities:")
+        print(f"\n[DRY RUN] First 20 of {len(records)} scraped:")
         for r in records[:20]:
-            coords = f"{r['lat']:.4f},{r['lng']:.4f}" if r["lat"] else "no coords"
-            print(f"  {r['name'][:50]:<50} {r['type']:<8} {coords}")
-        print(f"\n  … {len(records)} total")
+            print(f"  {r['name'][:55]:<55} | {r['type']:<8} | {r['address'][:35]}")
         return
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(records, f, indent=2, ensure_ascii=False)
-        print(f"Saved {len(records)} facilities to {args.output}")
+        print(f"Saved {len(records):,} facilities → {args.output}")
 
     if args.seed:
         seed_to_db(records)
@@ -274,11 +322,12 @@ async def main_async(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--output", type=str, help="Save to JSON file")
+    parser.add_argument("--dry-run", action="store_true", help="Scrape page 1 only, preview results")
+    parser.add_argument("--pages", type=int, default=None, help="Max pages to scrape")
+    parser.add_argument("--output", type=str, help="Save scraped data to JSON file")
+    parser.add_argument("--from-json", type=str, help="Load from a previously saved JSON instead of scraping")
     parser.add_argument("--seed", action="store_true", help="Insert into Supabase DB")
     args = parser.parse_args()
-
     asyncio.run(main_async(args))
 
 
