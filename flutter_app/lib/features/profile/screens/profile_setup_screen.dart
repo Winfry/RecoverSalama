@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/salama_widgets.dart';
+import '../../hospital/providers/hospital_provider.dart';
 import '../../recovery/providers/recovery_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -38,6 +39,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   // Step 3 controllers
   final _allergiesCtrl = TextEditingController();
   final _caregiverCtrl = TextEditingController();
+
+  String _hospital = '';
 
   bool _isSaving = false;
 
@@ -494,6 +497,65 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           controller: _weightCtrl,
           helperText: 'Used for calorie and protein calculations',
         ),
+
+        const SizedBox(height: 16),
+        const Text('Hospital (Optional)',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () async {
+            if (ref.read(hospitalProvider).hospitals.isEmpty) {
+              ref.read(hospitalProvider.notifier).load();
+            }
+            await showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (_) => _HospitalPickerSheet(
+                onSelect: (name) => setState(() => _hospital = name),
+              ),
+            );
+          },
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(
+                color: _hospital.isNotEmpty
+                    ? AppColors.primary
+                    : AppColors.border,
+                width: _hospital.isNotEmpty ? 2 : 1.5,
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _hospital.isNotEmpty
+                        ? _hospital
+                        : 'Select your hospital…',
+                    style: TextStyle(
+                      color: _hospital.isNotEmpty
+                          ? AppColors.textPrimary
+                          : AppColors.textHint,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.chevron_right,
+                    color: AppColors.textHint, size: 18),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -596,6 +658,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         'allergies': allergies,
         'other_allergies': _allergiesCtrl.text.trim(),
         'caregiver_phone': _caregiverCtrl.text.trim(),
+        'hospital': _hospital,
       });
 
       ref.read(profileProvider.notifier).setFromSetup({
@@ -605,7 +668,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         'gender': _gender,
         'surgery_type': _surgery,
         'surgery_date': _surgeryDate,
-        'hospital': '',
+        'hospital': _hospital,
         'surgeon': '',
         'weight': double.tryParse(_weightCtrl.text) ?? 0,
         'blood_type': '',
