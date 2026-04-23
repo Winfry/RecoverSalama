@@ -370,15 +370,21 @@ class _DietScreenState extends ConsumerState<DietScreen> {
               const SizedBox(height: 12),
             ],
 
+          // Foods to avoid — from Kenya MOH rules (legacy section, retained)
+          if (diet.avoidList.isNotEmpty) ...[
+            _buildAvoidSection(diet.avoidList),
+            const SizedBox(height: 12),
+          ],
+
           // Source citation
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
+          const Padding(
+            padding: EdgeInsets.only(top: 4, bottom: 8),
             child: Row(
               children: [
-                const Icon(Icons.menu_book_outlined,
+                Icon(Icons.menu_book_outlined,
                     size: 11, color: Colors.white24),
-                const SizedBox(width: 5),
-                const Expanded(
+                SizedBox(width: 5),
+                Expanded(
                   child: Text(
                     'Kenya National Clinical Nutrition Manual (MOH 2010)',
                     style: TextStyle(color: Colors.white24, fontSize: 10),
@@ -687,6 +693,66 @@ class _DietScreenState extends ConsumerState<DietScreen> {
       ),
       child: Text(text,
           style: const TextStyle(color: Colors.white54, fontSize: 9)),
+    );
+  }
+
+  // ── Foods to Avoid section (from MOH rules) ──────────────
+
+  Widget _buildAvoidSection(List<String> avoidList) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kRed.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _kRed.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🚫', style: TextStyle(fontSize: 11)),
+                    SizedBox(width: 4),
+                    Text('Avoid During Recovery',
+                        style: TextStyle(
+                            color: _kRed,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...avoidList.map(
+            (item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.cancel_outlined,
+                      color: _kRed, size: 14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(item,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

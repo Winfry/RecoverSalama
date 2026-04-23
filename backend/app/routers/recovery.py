@@ -273,6 +273,9 @@ async def get_meal_plan(
         allergies=allergy_list,
     )
 
+    # Merge MOH avoid list from the rules-based engine into the Gemini response
+    meal_plan["avoid"] = base_plan.avoid
+
     return meal_plan
 
 

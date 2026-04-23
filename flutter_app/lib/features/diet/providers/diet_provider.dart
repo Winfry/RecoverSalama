@@ -95,6 +95,7 @@ class MealPlan {
   final double targetFatG;
   final String aiTip;
   final Map<String, MealDetail> meals; // keys: breakfast/lunch/dinner/snack
+  final List<String> avoid;            // Foods to avoid — from Kenya MOH rules
 
   const MealPlan({
     this.phase = '',
@@ -105,6 +106,7 @@ class MealPlan {
     this.targetFatG = 0,
     this.aiTip = '',
     this.meals = const {},
+    this.avoid = const [],
   });
 
   factory MealPlan.fromJson(Map<String, dynamic> j) => MealPlan(
@@ -118,6 +120,7 @@ class MealPlan {
         meals: (j['meals'] as Map<String, dynamic>? ?? {}).map(
           (k, v) => MapEntry(k, MealDetail.fromJson(v as Map<String, dynamic>)),
         ),
+        avoid: (j['avoid'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       );
 
   int get totalCalories => meals.values.fold(0, (s, m) => s + m.totalCalories);
@@ -134,6 +137,7 @@ class MealPlan {
         targetFatG: targetFatG,
         aiTip: aiTip,
         meals: Map.from(meals)..[mealType] = updated,
+        avoid: avoid,
       );
 }
 
@@ -346,6 +350,7 @@ class DietNotifier extends StateNotifier<DietState> {
             : _phaseLabel(phaseRaw),
         aiTip: plan.aiTip.isNotEmpty ? plan.aiTip : _phaseTip(phaseRaw),
         targetKcal: plan.targetKcal,
+        avoidList: plan.avoid,
         source: 'Kenya National Clinical Nutrition Manual (MOH 2010)',
       );
     } catch (e) {
