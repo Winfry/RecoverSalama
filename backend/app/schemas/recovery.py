@@ -65,3 +65,60 @@ class MoodResponse(BaseModel):
     status: str
     support_message: str
     mental_health_level: str  # "stable" | "monitor" | "needs_support"
+
+
+# ── Structured Meal Plan ───────────────────────────────────────
+
+class MealItemDetail(BaseModel):
+    name: str
+    calories: int = 0
+    protein_g: float = 0
+    carbs_g: float = 0
+    fat_g: float = 0
+
+
+class MealDetail(BaseModel):
+    name: str
+    score: int = 0
+    description: str = ""
+    items: list[MealItemDetail] = []
+    total_calories: int = 0
+    total_protein_g: float = 0
+    total_carbs_g: float = 0
+    total_fat_g: float = 0
+
+
+class MealPlanResponse(BaseModel):
+    phase: str = ""
+    phase_label: str = ""
+    target_kcal: int = 0
+    target_protein_g: float = 0
+    target_carbs_g: float = 0
+    target_fat_g: float = 0
+    ai_tip: str = ""
+    meals: dict[str, MealDetail] = {}
+    avoid: list[str] = []           # Foods to avoid — from Kenya MOH diet rules
+
+
+class MealAlternativesRequest(BaseModel):
+    meal_name: str
+    meal_type: str  # "breakfast" | "lunch" | "dinner" | "snack"
+    preference_text: str = ""
+    surgery_type: str
+    day: int
+    phase: str
+    allergies: list[str] = []
+
+
+class MealAlternative(BaseModel):
+    name: str
+    rating: int = 0
+    description: str = ""
+    total_calories: int = 0
+    total_protein_g: float = 0
+    total_carbs_g: float = 0
+    total_fat_g: float = 0
+
+
+class MealAlternativesResponse(BaseModel):
+    alternatives: list[MealAlternative] = []

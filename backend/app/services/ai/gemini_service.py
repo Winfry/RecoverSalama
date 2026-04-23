@@ -263,6 +263,93 @@ Respond in 3-5 sentences maximum. Be specific to what this patient actually said
 Do NOT give generic advice. Do NOT list bullet points. Write like a caring friend.
 """
 
+MEAL_PLAN_PROMPT = """Generate a structured daily meal plan for a post-surgical Kenyan patient.
+
+PATIENT:
+- Surgery type: {surgery_type}
+- Day {day} of recovery
+- Diet phase: {phase} ({phase_label})
+- Known allergies: {allergies}
+- Target calories: {target_kcal} kcal/day
+
+REQUIREMENTS:
+1. Use Kenya-local foods (Kiswahili names first): uji wa wimbi, ugali, sukuma wiki,
+   maharagwe, samaki/tilapia, mtindi, viazi, ndizi, avocado, eggs, kunde, mchicha, etc.
+2. Respect phase restrictions strictly:
+   - clear_liquid: only broth, water, weak chai, fruit juice (no pulp)
+   - full_liquid: uji, mtindi, blended soups, fresh juices
+   - soft_diet: soft ugali, mashed viazi, well-cooked vegetables, soft proteins (eggs, flaked fish)
+   - high_protein: normal Kenyan diet with protein-rich food at every meal
+3. Avoid ALL listed allergens
+4. Score each meal 1–10 based on nutritional suitability for this recovery stage
+5. Include realistic macro estimates (calories, protein_g, carbs_g, fat_g) for each item
+
+Respond with ONLY valid JSON (no markdown, no explanation):
+{{
+  "phase": "{phase}",
+  "phase_label": "{phase_label}",
+  "target_kcal": {target_kcal},
+  "target_protein_g": 70,
+  "target_carbs_g": 220,
+  "target_fat_g": 55,
+  "ai_tip": "One-sentence tip specific to this phase and surgery type",
+  "meals": {{
+    "breakfast": {{
+      "name": "Meal name",
+      "score": 9,
+      "description": "Why this meal is good for recovery",
+      "items": [
+        {{"name": "Food item", "calories": 150, "protein_g": 5, "carbs_g": 25, "fat_g": 3}}
+      ],
+      "total_calories": 150,
+      "total_protein_g": 5,
+      "total_carbs_g": 25,
+      "total_fat_g": 3
+    }},
+    "lunch": {{"name": "...", "score": 8, "description": "...", "items": [{{"name": "...", "calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0}}], "total_calories": 0, "total_protein_g": 0, "total_carbs_g": 0, "total_fat_g": 0}},
+    "dinner": {{"name": "...", "score": 9, "description": "...", "items": [{{"name": "...", "calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0}}], "total_calories": 0, "total_protein_g": 0, "total_carbs_g": 0, "total_fat_g": 0}},
+    "snack": {{"name": "...", "score": 7, "description": "...", "items": [{{"name": "...", "calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0}}], "total_calories": 0, "total_protein_g": 0, "total_carbs_g": 0, "total_fat_g": 0}}
+  }}
+}}
+"""
+
+MEAL_ALTERNATIVES_PROMPT = """Suggest 5 alternative {meal_type} options for a post-surgical Kenyan patient.
+
+PATIENT:
+- Surgery type: {surgery_type}
+- Day {day} of recovery, phase: {phase}
+- Allergies: {allergies}
+
+CURRENT {meal_type_upper}: {meal_name}
+PATIENT'S PREFERENCE: "{preference_text}"
+
+Generate exactly 5 alternatives that:
+1. Respect phase {phase} dietary restrictions
+2. Use Kenya-local foods (Kiswahili names where appropriate)
+3. Align with the preference: "{preference_text}"
+4. Avoid allergens: {allergies}
+5. Are nutritionally appropriate for post-surgical recovery day {day}
+
+Respond with ONLY valid JSON (no markdown):
+{{
+  "alternatives": [
+    {{
+      "name": "Meal name",
+      "rating": 8,
+      "description": "Why this is a good choice for recovery",
+      "total_calories": 250,
+      "total_protein_g": 12,
+      "total_carbs_g": 35,
+      "total_fat_g": 6
+    }},
+    {{"name": "...", "rating": 0, "description": "...", "total_calories": 0, "total_protein_g": 0, "total_carbs_g": 0, "total_fat_g": 0}},
+    {{"name": "...", "rating": 0, "description": "...", "total_calories": 0, "total_protein_g": 0, "total_carbs_g": 0, "total_fat_g": 0}},
+    {{"name": "...", "rating": 0, "description": "...", "total_calories": 0, "total_protein_g": 0, "total_carbs_g": 0, "total_fat_g": 0}},
+    {{"name": "...", "rating": 0, "description": "...", "total_calories": 0, "total_protein_g": 0, "total_carbs_g": 0, "total_fat_g": 0}}
+  ]
+}}
+"""
+
 CAREGIVER_SUMMARY_PROMPT = """Generate a brief daily recovery summary for a family
 caregiver. This will be sent via WhatsApp.
 
@@ -609,7 +696,98 @@ class GeminiService:
             return self._fallback_caregiver_summary(patient_context, checkin_data, language)
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # 5. BACKWARD-COMPATIBLE METHOD — For existing code
+    # 5. MEAL PLAN — Structured daily meal with macros
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    async def generate_meal_plan(
+        self,
+        surgery_type: str,
+        day: int,
+        phase: str,
+        phase_label: str,
+        target_kcal: int,
+        allergies: list[str] | None = None,
+    ) -> dict:
+        """
+        Generate a structured daily meal plan (breakfast/lunch/dinner/snack)
+        with Kenya-local foods and per-item macro breakdowns.
+        """
+        if not self.available:
+            return self._fallback_meal_plan(phase, phase_label, target_kcal)
+
+        prompt = MEAL_PLAN_PROMPT.format(
+            surgery_type=surgery_type,
+            day=day,
+            phase=phase,
+            phase_label=phase_label,
+            target_kcal=target_kcal,
+            allergies=", ".join(allergies or []) or "None",
+        )
+
+        try:
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=self.structured_config,
+            )
+            data = json.loads(response.text)
+            data.setdefault("phase", phase)
+            data.setdefault("phase_label", phase_label)
+            data.setdefault("target_kcal", target_kcal)
+            data.setdefault("ai_tip", "")
+            data.setdefault("meals", {})
+            return data
+        except Exception as e:
+            logger.error(f"Gemini meal plan failed: {e}")
+            return self._fallback_meal_plan(phase, phase_label, target_kcal)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 6. MEAL ALTERNATIVES — AI-suggested swaps
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    async def get_meal_alternatives(
+        self,
+        meal_name: str,
+        meal_type: str,
+        preference_text: str,
+        surgery_type: str,
+        day: int,
+        phase: str,
+        allergies: list[str] | None = None,
+    ) -> dict:
+        """
+        Generate 5 Kenya-local meal alternatives based on patient preference.
+        Respects phase restrictions and allergens.
+        """
+        if not self.available:
+            return self._fallback_meal_alternatives(meal_type)
+
+        prompt = MEAL_ALTERNATIVES_PROMPT.format(
+            surgery_type=surgery_type,
+            day=day,
+            phase=phase,
+            meal_name=meal_name,
+            meal_type=meal_type,
+            meal_type_upper=meal_type.upper(),
+            preference_text=preference_text.strip() or "No specific preference",
+            allergies=", ".join(allergies or []) or "None",
+        )
+
+        try:
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=self.structured_config,
+            )
+            data = json.loads(response.text)
+            data.setdefault("alternatives", [])
+            return data
+        except Exception as e:
+            logger.error(f"Gemini meal alternatives failed: {e}")
+            return self._fallback_meal_alternatives(meal_type)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 7. BACKWARD-COMPATIBLE METHOD — For existing code
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     async def generate_response(
@@ -770,6 +948,77 @@ class GeminiService:
         }
         lang_responses = responses.get(language, responses["en"])
         return lang_responses.get(mood, lang_responses.get("Okay", "Thank you for checking in."))
+
+    def _fallback_meal_plan(
+        self, phase: str, phase_label: str, target_kcal: int
+    ) -> dict:
+        """Safe meal plan when Gemini is unavailable."""
+        return {
+            "phase": phase,
+            "phase_label": phase_label,
+            "target_kcal": target_kcal,
+            "target_protein_g": 70,
+            "target_carbs_g": 220,
+            "target_fat_g": 55,
+            "ai_tip": "Stay well hydrated and eat small, frequent meals for faster healing.",
+            "meals": {
+                "breakfast": {
+                    "name": "Uji wa Wimbi",
+                    "score": 8,
+                    "description": "Finger millet porridge — iron-rich and gentle on digestion",
+                    "items": [
+                        {"name": "Uji wa Wimbi", "calories": 180, "protein_g": 5, "carbs_g": 36, "fat_g": 2},
+                    ],
+                    "total_calories": 180, "total_protein_g": 5,
+                    "total_carbs_g": 36, "total_fat_g": 2,
+                },
+                "lunch": {
+                    "name": "Soft Ugali & Sukuma Wiki",
+                    "score": 8,
+                    "description": "Maize meal with iron-rich kale for tissue recovery",
+                    "items": [
+                        {"name": "Soft Ugali", "calories": 220, "protein_g": 4, "carbs_g": 48, "fat_g": 1},
+                        {"name": "Sukuma Wiki", "calories": 60, "protein_g": 4, "carbs_g": 8, "fat_g": 2},
+                    ],
+                    "total_calories": 280, "total_protein_g": 8,
+                    "total_carbs_g": 56, "total_fat_g": 3,
+                },
+                "dinner": {
+                    "name": "Tilapia & Soft Rice",
+                    "score": 9,
+                    "description": "High-protein samaki for wound healing and energy",
+                    "items": [
+                        {"name": "Tilapia (samaki)", "calories": 180, "protein_g": 25, "carbs_g": 0, "fat_g": 6},
+                        {"name": "Soft Rice", "calories": 200, "protein_g": 4, "carbs_g": 44, "fat_g": 1},
+                    ],
+                    "total_calories": 380, "total_protein_g": 29,
+                    "total_carbs_g": 44, "total_fat_g": 7,
+                },
+                "snack": {
+                    "name": "Mtindi & Ndizi",
+                    "score": 8,
+                    "description": "Probiotic yoghurt with banana for gut health",
+                    "items": [
+                        {"name": "Mtindi (yoghurt)", "calories": 120, "protein_g": 6, "carbs_g": 14, "fat_g": 4},
+                        {"name": "Ndizi (banana)", "calories": 90, "protein_g": 1, "carbs_g": 23, "fat_g": 0},
+                    ],
+                    "total_calories": 210, "total_protein_g": 7,
+                    "total_carbs_g": 37, "total_fat_g": 4,
+                },
+            },
+        }
+
+    def _fallback_meal_alternatives(self, meal_type: str) -> dict:
+        """Safe alternatives when Gemini is unavailable."""
+        return {
+            "alternatives": [
+                {"name": "Uji wa Wimbi", "rating": 9, "description": "Finger millet porridge — iron-rich, easy to digest", "total_calories": 180, "total_protein_g": 5, "total_carbs_g": 36, "total_fat_g": 2},
+                {"name": "Mtindi with Matunda", "rating": 8, "description": "Probiotic yoghurt with mixed fruit for gut recovery", "total_calories": 200, "total_protein_g": 8, "total_carbs_g": 32, "total_fat_g": 4},
+                {"name": "Boiled Eggs & Brown Bread", "rating": 7, "description": "Simple high-protein option for tissue repair", "total_calories": 250, "total_protein_g": 14, "total_carbs_g": 25, "total_fat_g": 9},
+                {"name": "Avocado on Toast", "rating": 8, "description": "Healthy fats and complex carbs for sustained energy", "total_calories": 280, "total_protein_g": 6, "total_carbs_g": 28, "total_fat_g": 16},
+                {"name": "Vegetable Soup", "rating": 7, "description": "Light mixed vegetable broth — gentle and hydrating", "total_calories": 120, "total_protein_g": 4, "total_carbs_g": 18, "total_fat_g": 3},
+            ]
+        }
 
     def _fallback_caregiver_summary(
         self, patient_context: dict, checkin_data: dict, language: str

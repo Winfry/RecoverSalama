@@ -77,6 +77,39 @@ class ApiService {
     });
   }
 
+  // ── Meal Plan (structured AI) ──
+  Future<Response> getMealPlan({
+    required String surgeryType,
+    required int daysSinceSurgery,
+    required List<String> allergies,
+  }) async {
+    return _dio.get('/api/recovery/meal_plan', queryParameters: {
+      'surgery_type': surgeryType,
+      'day': daysSinceSurgery,
+      'allergies': allergies.join(','),
+    });
+  }
+
+  Future<Response> getMealAlternatives({
+    required String mealName,
+    required String mealType,
+    required String preferenceText,
+    required String surgeryType,
+    required int day,
+    required String phase,
+    required List<String> allergies,
+  }) async {
+    return _dio.post('/api/recovery/meal_alternatives', data: {
+      'meal_name': mealName,
+      'meal_type': mealType,
+      'preference_text': preferenceText,
+      'surgery_type': surgeryType,
+      'day': day,
+      'phase': phase,
+      'allergies': allergies,
+    });
+  }
+
   // ── Hospitals ──
   Future<Response> getHospitals({
     double? lat,

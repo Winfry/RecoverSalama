@@ -24,6 +24,9 @@ from app.schemas.recovery import (
     DashboardResponse,
     MoodRequest,
     MoodResponse,
+    MealPlanResponse,
+    MealAlternativesRequest,
+    MealAlternativesResponse,
 )
 from app.services.ml.risk_scorer import RiskScorer
 from app.services.ml.diet_engine import DietEngine
@@ -239,6 +242,60 @@ async def get_diet_plan(
     )
 
     return plan
+
+
+@router.get("/meal_plan", response_model=MealPlanResponse)
+async def get_meal_plan(
+    surgery_type: str,
+    day: int,
+    allergies: str = "",
+    patient_id: str = Depends(get_patient_id),
+):
+    """
+    Get a structured daily meal plan (breakfast/lunch/dinner/snack) from Gemini AI.
+    Uses the DietEngine to determine the current phase, then Gemini builds the plan.
+    """
+    allergy_list = [a.strip() for a in allergies.split(",") if a.strip()]
+
+    base_plan = diet_engine.get_plan(
+        surgery_type=surgery_type,
+        day=day,
+        allergies=allergy_list,
+    )
+
+    gemini = GeminiService()
+    meal_plan = await gemini.generate_meal_plan(
+        surgery_type=surgery_type,
+        day=day,
+        phase=base_plan.phase,
+        phase_label=base_plan.phase,
+        target_kcal=base_plan.target_kcal,
+        allergies=allergy_list,
+    )
+
+    return meal_plan
+
+
+@router.post("/meal_alternatives", response_model=MealAlternativesResponse)
+async def get_meal_alternatives(
+    request: MealAlternativesRequest,
+    patient_id: str = Depends(get_patient_id),
+):
+    """
+    Generate 5 Kenya-local meal alternatives using Gemini AI.
+    Respects phase restrictions, allergens, and patient preference.
+    """
+    gemini = GeminiService()
+    result = await gemini.get_meal_alternatives(
+        meal_name=request.meal_name,
+        meal_type=request.meal_type,
+        preference_text=request.preference_text,
+        surgery_type=request.surgery_type,
+        day=request.day,
+        phase=request.phase,
+        allergies=request.allergies,
+    )
+    return result
 
 
 @router.post("/mood", response_model=MoodResponse)
