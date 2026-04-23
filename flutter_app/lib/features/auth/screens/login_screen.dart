@@ -360,12 +360,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   InputDecoration _inputDecoration({
     required String hint,
     required IconData icon,
-    Widget? prefix,
   }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
-      prefixIcon: prefix ?? Icon(icon, color: AppColors.textHint, size: 20),
+      prefixIcon: Icon(icon, color: AppColors.textHint, size: 20),
       filled: true,
       fillColor: AppColors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
