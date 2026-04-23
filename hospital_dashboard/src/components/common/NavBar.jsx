@@ -7,6 +7,7 @@ const navItems = [
   { path: '/alerts',    label: 'Alerts',    icon: '⚠' },
   { path: '/analytics', label: 'Analytics', icon: '↗' },
   { path: '/discharge', label: 'Discharge', icon: '+' },
+  { path: '/reference', label: 'Reference',  icon: '⊕' },
 ];
 
 export default function NavBar() {

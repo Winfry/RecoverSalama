@@ -10,6 +10,7 @@ import PatientDetail from './components/hospital/PatientDetail';
 import AlertCentre from './components/hospital/AlertCentre';
 import Analytics from './components/hospital/Analytics';
 import DischargeForm from './components/hospital/DischargeForm';
+import SurgeryReference from './pages/SurgeryReference';
 import NavBar from './components/common/NavBar';
 
 /**
@@ -47,6 +48,7 @@ export default function App() {
                     <Route path="/alerts" element={<AlertCentre />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/discharge" element={<DischargeForm />} />
+                    <Route path="/reference" element={<SurgeryReference />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>

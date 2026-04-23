@@ -24,3 +24,14 @@ input, select, textarea {
 /* Remove default button styles */
 button { font-family: inherit; }
 
+/* CSS variables used by surgery_reference — mapped to dashboard theme */
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --color-text-primary: #E8EDF2;
+  --color-text-secondary: #8A9BB0;
+  --color-background-secondary: #182434;
+  --color-background-tertiary: #1F3048;
+  --color-border-secondary: rgba(255,255,255,0.10);
+  --color-border-tertiary: rgba(255,255,255,0.05);
+}
+
