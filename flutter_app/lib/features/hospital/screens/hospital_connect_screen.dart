@@ -7,7 +7,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -32,14 +31,12 @@ class _HospitalConnectScreenState
   bool _showMap = false;
   final _searchCtrl = TextEditingController();
   String _query = '';
-  Position? _userPos;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(hospitalProvider.notifier).load();
-      _initLocation();
     });
   }
 
@@ -47,22 +44,6 @@ class _HospitalConnectScreenState
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _initLocation() async {
-    try {
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.whileInUse ||
-          perm == LocationPermission.always) {
-        final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.low,
-        );
-        if (mounted) setState(() => _userPos = pos);
-      }
-    } catch (_) {}
   }
 
   List<Hospital> _filtered(List<Hospital> all) {
@@ -491,16 +472,14 @@ class _HospitalConnectScreenState
         .where((h) => h.lat != null && h.lng != null)
         .toList();
 
-    final center = _userPos != null
-        ? LatLng(_userPos!.latitude, _userPos!.longitude)
-        : const LatLng(-1.2864, 36.8172);
+    const center = LatLng(-1.2864, 36.8172); // Nairobi default
 
     return Stack(
       children: [
         FlutterMap(
-          options: MapOptions(
+          options: const MapOptions(
             initialCenter: center,
-            initialZoom: 11.0,
+            initialZoom: 6.5, // Kenya-wide view so all hospitals are visible
           ),
           children: [
             TileLayer(
@@ -510,20 +489,6 @@ class _HospitalConnectScreenState
             ),
             MarkerLayer(
               markers: [
-                if (_userPos != null)
-                  Marker(
-                    point: center,
-                    width: 22,
-                    height: 22,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
-                        border:
-                            Border.all(color: Colors.white, width: 3),
-                      ),
-                    ),
-                  ),
                 ...withCoords.map((h) => Marker(
                       point: LatLng(h.lat!, h.lng!),
                       width: 36,
