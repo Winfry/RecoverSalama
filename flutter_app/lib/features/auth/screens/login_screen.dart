@@ -76,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = _friendlyError(e.toString());
       });
     } finally {
       if (mounted) {
@@ -195,17 +195,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
+                      style: const TextStyle(fontSize: 15),
                       decoration: _inputDecoration(
-                        hint: '712345678',
+                        hint: '712 345 678',
                         icon: Icons.phone_outlined,
-                        prefix: const Padding(
-                          padding: EdgeInsets.only(left: 12, right: 4),
-                          child: Text('+254',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary)),
+                      ).copyWith(
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.only(left: 14, right: 0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.phone_outlined,
+                                  color: AppColors.textHint, size: 18),
+                              const SizedBox(width: 6),
+                              const Text('+254',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary)),
+                              const SizedBox(width: 8),
+                              Container(
+                                  width: 1, height: 20, color: AppColors.border),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
                         ),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 0, minHeight: 48),
                       ),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Phone is required';
@@ -309,6 +325,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ],
       ),
     );
+  }
+
+  String _friendlyError(String raw) {
+    if (raw.contains('invalid_credentials') || raw.contains('Invalid login')) {
+      return 'Incorrect phone number or password. Please try again.';
+    }
+    if (raw.contains('user_already_exists') || raw.contains('already registered')) {
+      return 'An account with this number already exists. Sign in instead.';
+    }
+    if (raw.contains('SocketException') || raw.contains('connection')) {
+      return 'No internet connection. Please check your network.';
+    }
+    if (raw.contains('weak_password')) {
+      return 'Password is too weak. Use at least 6 characters.';
+    }
+    return 'Something went wrong. Please try again.';
   }
 
   Widget _buildLabel(String text) {
