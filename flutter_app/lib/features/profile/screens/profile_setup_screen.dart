@@ -25,6 +25,133 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
       _ProfileSetupScreenState();
 }
 
+// ── Hospital picker bottom sheet ────────────────────────────
+class _HospitalPickerSheet extends ConsumerStatefulWidget {
+  final ValueChanged<String> onSelect;
+  const _HospitalPickerSheet({required this.onSelect});
+
+  @override
+  ConsumerState<_HospitalPickerSheet> createState() =>
+      _HospitalPickerSheetState();
+}
+
+class _HospitalPickerSheetState extends ConsumerState<_HospitalPickerSheet> {
+  final _ctrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(hospitalProvider).hospitals.isEmpty) {
+        ref.read(hospitalProvider.notifier).load();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(hospitalProvider);
+    final q = _query.toLowerCase();
+    final hospitals = state.hospitals
+        .where((h) =>
+            q.isEmpty ||
+            h.name.toLowerCase().contains(q) ||
+            h.address.toLowerCase().contains(q))
+        .take(80)
+        .toList();
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollCtrl) => Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Text('Select Hospital',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
+              controller: _ctrl,
+              autofocus: true,
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'Search by name or area…',
+                prefixIcon: const Icon(Icons.search, size: 18),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (state.isLoading)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          else
+            Expanded(
+              child: hospitals.isEmpty
+                  ? const Center(
+                      child: Text('No hospitals found.',
+                          style: TextStyle(color: AppColors.textHint)))
+                  : ListView.builder(
+                      controller: scrollCtrl,
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: hospitals.length,
+                      itemBuilder: (_, i) {
+                        final h = hospitals[i];
+                        return ListTile(
+                          title: Text(h.name,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600)),
+                          subtitle: h.address.isNotEmpty
+                              ? Text(h.address,
+                                  style: const TextStyle(fontSize: 11),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis)
+                              : null,
+                          trailing: Text(h.typeLabel,
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.primary)),
+                          onTap: () {
+                            widget.onSelect(h.name);
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   int _step = 1;
   String _gender = 'Female';

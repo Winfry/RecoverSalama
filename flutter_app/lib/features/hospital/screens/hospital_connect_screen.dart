@@ -9,7 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong2.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/colors.dart';
@@ -499,8 +499,8 @@ class _HospitalConnectScreenState
       children: [
         FlutterMap(
           options: MapOptions(
-            center: center,
-            zoom: 11.0,
+            initialCenter: center,
+            initialZoom: 11.0,
           ),
           children: [
             TileLayer(
