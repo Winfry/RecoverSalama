@@ -66,12 +66,25 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   build_runner: ^2.4.8
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
 
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icons/launcher_icon.png"
   min_sdk_android: 21
+
+# Native splash — same light-blue background as the Flutter SplashScreen widget
+# so the transition is seamless (no jarring white flash before Flutter loads).
+flutter_native_splash:
+  color: "#EBF5FB"
+  image: assets/icons/launcher_icon.png
+  android: true
+  ios: false
+  web: false
+  android_12:
+    color: "#EBF5FB"
+    image: assets/icons/launcher_icon.png
 
 flutter:
   uses-material-design: true

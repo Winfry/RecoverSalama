@@ -26,7 +26,15 @@ async def list_hospitals(
     query = db.table("hospitals").select("*")
     if hospital_type:
         query = query.eq("type", hospital_type)
-    result = query.execute()
+    # Order: hospitals with GPS coordinates first (most useful for map view),
+    # then the rest alphabetically. Limit 5000 overrides Supabase's default 1000.
+    result = (
+        query
+        .order("lat", desc=True, nulls_last=True)
+        .order("name")
+        .limit(5000)
+        .execute()
+    )
     return result.data
 
 

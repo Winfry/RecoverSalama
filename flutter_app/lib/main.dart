@@ -11,28 +11,27 @@ import 'shared/services/cache_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load .env first — Supabase and ApiService both depend on it.
+  // If this fails, show a clear error instead of a blank screen.
   try {
-    // Load environment variables
     await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('FATAL: could not load .env — $e');
+    runApp(_EnvErrorApp());
+    return;
+  }
 
-    // Initialize Hive and open the cache box
+  try {
     await Hive.initFlutter();
     await CacheService.init();
-
-    // Initialize Supabase
     await Supabase.initialize(
       url: dotenv.env['SUPABASE_URL'] ?? '',
       anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
     );
-
-    // Initialize local notifications
     await NotificationService.initialize();
-
-    // Schedule the daily 9 AM check-in reminder
     await NotificationService.scheduleDailyCheckInReminder();
   } catch (e) {
-    // Log startup errors — don't crash with black screen
-    debugPrint('Startup error: $e');
+    debugPrint('Startup error (non-fatal): $e');
   }
 
   runApp(
@@ -40,4 +39,22 @@ Future<void> main() async {
       child: SalamaRecoverApp(),
     ),
   );
+}
+
+/// Shown only when the .env asset is missing from the build.
+class _EnvErrorApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text(
+            'Configuration missing.\nPlease rebuild the app.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
+      ),
+    );
+  }
 }
