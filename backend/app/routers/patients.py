@@ -22,11 +22,34 @@ async def create_profile(
     patient: PatientCreate,
     user: dict = Depends(get_current_user),
 ):
-    """Save patient profile from Flutter app's 3-step setup."""
+    """Save patient profile from Flutter app's 3-step setup.
+    Uses update-or-insert so re-running setup doesn't fail.
+    """
     db = get_supabase_client()
-    data = patient.model_dump()
+    # mode='json' ensures datetime.date serialises to ISO string for Supabase
+    data = patient.model_dump(mode='json')
     data["user_id"] = user["id"]
-    result = db.table("patients").insert(data).execute()
+
+    # Check if a profile already exists for this user (re-setup flow)
+    existing = (
+        db.table("patients")
+        .select("id")
+        .eq("user_id", user["id"])
+        .limit(1)
+        .execute()
+    )
+
+    if existing.data:
+        # Update the existing profile in-place
+        result = (
+            db.table("patients")
+            .update(data)
+            .eq("user_id", user["id"])
+            .execute()
+        )
+    else:
+        result = db.table("patients").insert(data).execute()
+
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to save profile")
     return result.data[0]

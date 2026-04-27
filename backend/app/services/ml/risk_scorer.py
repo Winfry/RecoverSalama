@@ -490,7 +490,7 @@ class RiskScorer:
         )
 
         try:
-            response = self._client.models.generate_content(
+            response = await self._client.aio.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(

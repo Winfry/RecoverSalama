@@ -186,6 +186,9 @@ class RecoveryNotifier extends StateNotifier<RecoveryState> {
     if (msg.contains('SocketException') || msg.contains('connection')) {
       return 'No internet connection. Check your network and try again.';
     }
+    if (msg.contains('timeout') || msg.contains('Timeout')) {
+      return 'Server is starting up — please wait a moment and try again.';
+    }
     if (msg.contains('401') || msg.contains('403')) {
       return 'Session expired. Please log in again.';
     }

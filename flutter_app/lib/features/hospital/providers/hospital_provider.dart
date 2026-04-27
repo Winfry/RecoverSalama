@@ -114,6 +114,9 @@ class HospitalNotifier extends StateNotifier<HospitalState> {
     if (msg.contains('SocketException') || msg.contains('connection')) {
       return 'No internet. Check your network and try again.';
     }
+    if (msg.contains('timeout') || msg.contains('Timeout')) {
+      return 'Server is starting up — please wait a moment and try again.';
+    }
     return 'Could not load hospitals. Please try again.';
   }
 }

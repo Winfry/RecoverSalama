@@ -30,7 +30,6 @@ async def list_hospitals(
     # then the rest alphabetically. Limit 5000 overrides Supabase's default 1000.
     result = (
         query
-        .order("lat", desc=True, nulls_last=True)
         .order("name")
         .limit(5000)
         .execute()
