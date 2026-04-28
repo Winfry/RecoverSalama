@@ -6,7 +6,7 @@ and the hospital React dashboard analytics page.
 from collections import defaultdict
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import get_current_user
 from app.database import get_supabase_client
@@ -199,5 +199,10 @@ async def get_analytics(
 async def get_hospital(hospital_id: str):
     """Get a single hospital's details."""
     db = get_supabase_client()
-    result = db.table("hospitals").select("*").eq("id", hospital_id).execute()
-    return result.data[0] if result.data else {"error": "Hospital not found"}
+    try:
+        result = db.table("hospitals").select("*").eq("id", hospital_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid hospital ID: {e}")
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+    return result.data[0]

@@ -180,7 +180,10 @@ async def get_patient(
 ):
     """Get a single patient — used by Flutter app and hospital dashboard."""
     db = get_supabase_client()
-    result = db.table("patients").select("*").eq("id", patient_id).execute()
+    try:
+        result = db.table("patients").select("*").eq("id", patient_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid patient ID: {e}")
     if not result.data:
         raise HTTPException(status_code=404, detail="Patient not found")
     return result.data[0]

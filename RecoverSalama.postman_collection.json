@@ -1,0 +1,439 @@
+{
+  "info": {
+    "name": "RecoverSalama API",
+    "description": "Full API collection for RecoverSalama — AI-powered surgical recovery platform for Kenya.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://recoversalama.onrender.com",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "PASTE_YOUR_SUPABASE_ACCESS_TOKEN_HERE",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔑 Auth — Get Token",
+      "item": [
+        {
+          "name": "Login (get Bearer token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwaWFvemZ5dHZ3cXVrYXV1bmxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDQ1NTMsImV4cCI6MjA5MDAyMDU1M30.I9oi9jzgL8i5TfhHU3F1uO9__kvoAdi_2mymbtBZVP8" }
+            ],
+            "url": {
+              "raw": "https://cpiaozfytvwqukauunla.supabase.co/auth/v1/token?grant_type=password",
+              "protocol": "https",
+              "host": ["cpiaozfytvwqukauunla", "supabase", "co"],
+              "path": ["auth", "v1", "token"],
+              "query": [{ "key": "grant_type", "value": "password" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your-test@email.com\",\n  \"password\": \"your-password\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🌐 General",
+      "item": [
+        {
+          "name": "Root — API info",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/", "host": ["{{base_url}}"], "path": [""] }
+          }
+        },
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "Swagger Docs (open in browser)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/docs", "host": ["{{base_url}}"], "path": ["docs"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏥 Hospitals (no auth)",
+      "item": [
+        {
+          "name": "List all hospitals",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/hospitals",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hospitals"]
+            }
+          }
+        },
+        {
+          "name": "List hospitals — filter by type",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/hospitals?hospital_type=public",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hospitals"],
+              "query": [{ "key": "hospital_type", "value": "public", "description": "public | private | mission | emergency" }]
+            }
+          }
+        },
+        {
+          "name": "Get single hospital",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/hospitals/HOSPITAL_ID_HERE",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hospitals", "HOSPITAL_ID_HERE"]
+            }
+          }
+        },
+        {
+          "name": "Hospital analytics (dashboard)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/hospitals/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hospitals", "analytics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Patients",
+      "item": [
+        {
+          "name": "Save / update profile (Step 3 setup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/patients/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "profile"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Kamau\",\n  \"age\": 35,\n  \"gender\": \"Male\",\n  \"surgery_type\": \"Appendectomy\",\n  \"surgery_date\": \"2026-04-22\",\n  \"hospital\": \"Kenyatta National Hospital\",\n  \"weight\": 72.5,\n  \"allergies\": [\"Peanuts\", \"Seafood\"],\n  \"other_allergies\": \"Sulphur\",\n  \"caregiver_phone\": \"+254705641953\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get my profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/patients/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "me"]
+            }
+          }
+        },
+        {
+          "name": "List all patients",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", ""]
+            }
+          }
+        },
+        {
+          "name": "Get single patient",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/patients/PATIENT_ID_HERE",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "PATIENT_ID_HERE"]
+            }
+          }
+        },
+        {
+          "name": "Get patient check-in history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/patients/PATIENT_ID_HERE/history?limit=14",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "PATIENT_ID_HERE", "history"],
+              "query": [{ "key": "limit", "value": "14" }]
+            }
+          }
+        },
+        {
+          "name": "Discharge patient (hospital dashboard)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/patients/PATIENT_ID_HERE/discharge",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "PATIENT_ID_HERE", "discharge"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discharge_date\": \"2026-04-27\",\n  \"assigned_doctor\": \"Dr. Wanjiku Mwangi\",\n  \"discharge_notes\": \"Avoid heavy lifting for 3 weeks. Follow up in 10 days.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Recovery",
+      "item": [
+        {
+          "name": "Submit daily check-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/checkin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "checkin"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pain_level\": 3,\n  \"symptoms\": [\"Mild headache\", \"Nausea or vomiting\"],\n  \"mood\": \"Good\",\n  \"days_since_surgery\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Submit check-in — HIGH risk example",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/checkin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "checkin"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pain_level\": 8,\n  \"symptoms\": [\"Fever above 38°C\", \"Wound bleeding or discharge\"],\n  \"mood\": \"Anxious\",\n  \"days_since_surgery\": 3\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Get check-in history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/history?limit=14",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "history"],
+              "query": [{ "key": "limit", "value": "14" }]
+            }
+          }
+        },
+        {
+          "name": "Get diet plan",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/diet?surgery_type=Appendectomy&day=5&allergies=Peanuts,Seafood",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "diet"],
+              "query": [
+                { "key": "surgery_type", "value": "Appendectomy" },
+                { "key": "day", "value": "5" },
+                { "key": "allergies", "value": "Peanuts,Seafood" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get AI meal plan",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/meal_plan?surgery_type=Appendectomy&day=5&allergies=Peanuts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "meal_plan"],
+              "query": [
+                { "key": "surgery_type", "value": "Appendectomy" },
+                { "key": "day", "value": "5" },
+                { "key": "allergies", "value": "Peanuts" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get meal alternatives",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/meal_alternatives",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "meal_alternatives"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meal_name\": \"Uji wa Wimbi\",\n  \"meal_type\": \"breakfast\",\n  \"preference_text\": \"something lighter\",\n  \"surgery_type\": \"Appendectomy\",\n  \"day\": 5,\n  \"phase\": \"soft_diet\",\n  \"allergies\": [\"Peanuts\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Submit mood check-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recovery/mood",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recovery", "mood"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mood\": \"Tired\",\n  \"notes\": \"Feeling weak today but better than yesterday\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 AI Chat",
+      "item": [
+        {
+          "name": "Send chat message (English)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "chat", ""]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Is swelling around the wound normal on day 5?\",\n  \"language\": \"en\",\n  \"surgery_type\": \"Appendectomy\",\n  \"days_since_surgery\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Send chat message (Kiswahili)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "chat", ""]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Ninaweza kuoga lini baada ya upasuaji?\",\n  \"language\": \"sw\",\n  \"surgery_type\": \"Appendectomy\",\n  \"days_since_surgery\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get chat history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/chat/history?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "chat", "history"],
+              "query": [{ "key": "limit", "value": "50" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚨 Alerts",
+      "item": [
+        {
+          "name": "Get active alerts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/alerts/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", ""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
