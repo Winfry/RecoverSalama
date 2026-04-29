@@ -71,6 +71,33 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Groq client — lazy-loaded so missing key doesn't crash startup
+_groq_client = None
+
+def _get_groq_client():
+    global _groq_client
+    if _groq_client is None and settings.groq_api_key:
+        from groq import AsyncGroq
+        _groq_client = AsyncGroq(api_key=settings.groq_api_key)
+    return _groq_client
+
+
+async def _groq_chat(system_prompt: str, message: str) -> str:
+    """Send a chat message via Groq (llama-3.3-70b). Returns reply text."""
+    client = _get_groq_client()
+    if not client:
+        raise RuntimeError("Groq API key not configured")
+    response = await client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message},
+        ],
+        temperature=0.4,
+        max_tokens=1024,
+    )
+    return response.choices[0].message.content
+
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # RESPONSE MODES
@@ -483,36 +510,44 @@ class GeminiService:
                 contents=f"{system_prompt}\n\nPatient says: {message}",
                 config=self.chat_config,
             )
-
             reply_text = response.text
 
-            # Extract sources from RAG context
-            sources = list({
-                chunk.get("source", "")
-                for chunk in rag_context
-                if chunk.get("source")
-            })
-
-            # Simple check: does the response suggest hospital contact?
-            alert_keywords = [
-                "hospital", "doctor", "daktari", "hospitali",
-                "emergency", "dharura", "999", "112", "immediately",
-                "haraka", "contact", "wasiliana",
-            ]
-            alert_hospital = any(
-                keyword in reply_text.lower() for keyword in alert_keywords
-            )
-
-            return {
-                "reply": reply_text,
-                "sources": sources,
-                "language": self._detect_response_language(reply_text),
-                "alert_hospital": alert_hospital,
-            }
-
         except Exception as e:
-            logger.error(f"Gemini chat failed: {e}")
-            return self._fallback_chat_response(message)
+            error_str = str(e)
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                logger.warning("Gemini quota exhausted — falling back to Groq")
+                try:
+                    reply_text = await _groq_chat(system_prompt, f"Patient says: {message}")
+                except Exception as groq_err:
+                    logger.error(f"Groq fallback also failed: {groq_err}")
+                    return self._fallback_chat_response(message)
+            else:
+                logger.error(f"Gemini chat failed: {e}")
+                return self._fallback_chat_response(message)
+
+        # Extract sources from RAG context
+        sources = list({
+            chunk.get("source", "")
+            for chunk in rag_context
+            if chunk.get("source")
+        })
+
+        # Simple check: does the response suggest hospital contact?
+        alert_keywords = [
+            "hospital", "doctor", "daktari", "hospitali",
+            "emergency", "dharura", "999", "112", "immediately",
+            "haraka", "contact", "wasiliana",
+        ]
+        alert_hospital = any(
+            keyword in reply_text.lower() for keyword in alert_keywords
+        )
+
+        return {
+            "reply": reply_text,
+            "sources": sources,
+            "language": self._detect_response_language(reply_text),
+            "alert_hospital": alert_hospital,
+        }
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # 2. AGENTIC REASONING — Multi-step clinical thinking

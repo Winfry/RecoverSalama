@@ -18,6 +18,7 @@ based on official Kenya MOH documents.
 from fastapi import APIRouter, Depends
 
 from app.auth import get_current_user, get_patient_id
+from app.config import settings
 from app.database import get_supabase_client
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.ai.gemini_service import GeminiService
@@ -26,6 +27,24 @@ from app.services.ai.rag_service import RAGService
 router = APIRouter()
 gemini = GeminiService()
 rag = RAGService()
+
+
+@router.get("/health")
+async def chat_health():
+    """Diagnose Gemini connectivity — call this to see what's failing."""
+    from google import genai
+    key = settings.gemini_api_key
+    if not key:
+        return {"status": "error", "reason": "GEMINI_API_KEY is not set"}
+    try:
+        client = genai.Client(api_key=key)
+        response = await client.aio.models.generate_content(
+            model="gemini-2.0-flash",
+            contents="Reply with just the word: OK",
+        )
+        return {"status": "ok", "gemini_reply": response.text.strip()}
+    except Exception as e:
+        return {"status": "error", "reason": str(e)}
 
 
 @router.post("/", response_model=ChatResponse)
