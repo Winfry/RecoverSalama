@@ -210,6 +210,9 @@ class DietState {
   final List<MealAlternative> alternatives;
   final String alternativesError;
 
+  // ── Pantry — foods the patient has at home today ─────────────────
+  final List<String> pantryItems;
+
   // ── LEGACY: flat food list (retained) ───────────────────────────
   final int currentDay;       // Which recovery day this plan is for
   final String phase;         // "clear_liquid" | "full_liquid" | "soft_diet" | "high_protein"
@@ -229,6 +232,7 @@ class DietState {
     this.isLoadingAlternatives = false,
     this.alternatives = const [],
     this.alternativesError = '',
+    this.pantryItems = const [],
     this.currentDay = 0,
     this.phase = '',
     this.phaseLabel = '',
@@ -246,6 +250,7 @@ class DietState {
     bool? isLoadingAlternatives,
     List<MealAlternative>? alternatives,
     String? alternativesError,
+    List<String>? pantryItems,
     int? currentDay,
     String? phase,
     String? phaseLabel,
@@ -263,6 +268,7 @@ class DietState {
             isLoadingAlternatives ?? this.isLoadingAlternatives,
         alternatives: alternatives ?? this.alternatives,
         alternativesError: alternativesError ?? this.alternativesError,
+        pantryItems: pantryItems ?? this.pantryItems,
         currentDay: currentDay ?? this.currentDay,
         phase: phase ?? this.phase,
         phaseLabel: phaseLabel ?? this.phaseLabel,
@@ -317,6 +323,18 @@ class DietNotifier extends StateNotifier<DietState> {
   ///   2. Calls Gemini to generate Kenya-local structured meals with macros
   ///
   /// Also back-fills legacy flat fields so existing code is unaffected.
+  void addPantryItem(String item) {
+    final trimmed = item.trim();
+    if (trimmed.isEmpty || state.pantryItems.contains(trimmed)) return;
+    state = state.copyWith(pantryItems: [...state.pantryItems, trimmed]);
+  }
+
+  void removePantryItem(String item) {
+    state = state.copyWith(
+      pantryItems: state.pantryItems.where((f) => f != item).toList(),
+    );
+  }
+
   Future<void> loadMealPlan({
     required String surgeryType,
     required int daysSinceSurgery,
@@ -331,6 +349,7 @@ class DietNotifier extends StateNotifier<DietState> {
         surgeryType: surgeryType,
         daysSinceSurgery: daysSinceSurgery,
         allergies: allergies,
+        availableFoods: state.pantryItems,
       );
 
       final data = response.data as Map<String, dynamic>;

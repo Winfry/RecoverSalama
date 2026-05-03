@@ -249,13 +249,16 @@ async def get_meal_plan(
     surgery_type: str,
     day: int,
     allergies: str = "",
+    available_foods: str = "",
     patient_id: str = Depends(get_patient_id),
 ):
     """
     Get a structured daily meal plan (breakfast/lunch/dinner/snack) from Gemini AI.
     Uses the DietEngine to determine the current phase, then Gemini builds the plan.
+    If available_foods is provided, Gemini prioritises those ingredients.
     """
     allergy_list = [a.strip() for a in allergies.split(",") if a.strip()]
+    foods_list = [f.strip() for f in available_foods.split(",") if f.strip()]
 
     base_plan = diet_engine.get_plan(
         surgery_type=surgery_type,
@@ -271,6 +274,7 @@ async def get_meal_plan(
         phase_label=base_plan.phase,
         target_kcal=base_plan.target_kcal,
         allergies=allergy_list,
+        available_foods=foods_list or None,
     )
 
     # Merge MOH avoid list from the rules-based engine into the Gemini response

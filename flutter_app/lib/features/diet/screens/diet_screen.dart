@@ -47,6 +47,7 @@ class DietScreen extends ConsumerStatefulWidget {
 class _DietScreenState extends ConsumerState<DietScreen> {
   late DateTime _weekStart;
   late DateTime _selectedDate;
+  final _pantryCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -55,6 +56,12 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     _weekStart    = now.subtract(Duration(days: now.weekday - 1)); // Monday
     _selectedDate = DateTime(now.year, now.month, now.day);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDate(_selectedDate));
+  }
+
+  @override
+  void dispose() {
+    _pantryCtrl.dispose();
+    super.dispose();
   }
 
   // ── Helpers ───────────────────────────────────────────────
@@ -348,6 +355,10 @@ class _DietScreenState extends ConsumerState<DietScreen> {
           _buildContextStrip(profile, diet),
           const SizedBox(height: 12),
 
+          // Pantry input — what the patient has at home today
+          _buildPantrySection(diet, profile),
+          const SizedBox(height: 14),
+
           // Daily macro targets
           _buildMacroCard(plan),
           const SizedBox(height: 14),
@@ -392,6 +403,166 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Pantry — what the patient has at home ────────────────
+
+  Widget _buildPantrySection(DietState diet, PatientProfile profile) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kGreen.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Text('🥘', style: TextStyle(fontSize: 16)),
+              SizedBox(width: 8),
+              Text(
+                "What's in your kitchen today?",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Add foods you have and we\'ll build meals around them.',
+            style: TextStyle(color: Colors.white38, fontSize: 11),
+          ),
+          const SizedBox(height: 12),
+
+          // Input row
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _pantryCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Eggs, Ugali, Sukuma wiki…',
+                    hintStyle:
+                        const TextStyle(color: Colors.white24, fontSize: 12),
+                    filled: true,
+                    fillColor: const Color(0xFF2A3347),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onSubmitted: _addPantryItem,
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _addPantryItem(_pantryCtrl.text),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _kGreen,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '+ Add',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Pantry chips
+          if (diet.pantryItems.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: diet.pantryItems
+                  .map((item) => _pantryChip(item))
+                  .toList(),
+            ),
+            const SizedBox(height: 14),
+
+            // Generate button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: diet.isLoading ? null : () => _loadForDate(_selectedDate),
+                icon: diet.isLoading
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text('✨', style: TextStyle(fontSize: 14)),
+                label: Text(
+                  diet.isLoading
+                      ? 'Generating…'
+                      : 'Generate meals with my ingredients',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _addPantryItem(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return;
+    ref.read(dietProvider.notifier).addPantryItem(trimmed);
+    _pantryCtrl.clear();
+  }
+
+  Widget _pantryChip(String item) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _kGreen.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _kGreen.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            item,
+            style: const TextStyle(
+                color: _kGreen, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () =>
+                ref.read(dietProvider.notifier).removePantryItem(item),
+            child: const Icon(Icons.close, size: 13, color: _kGreen),
           ),
         ],
       ),

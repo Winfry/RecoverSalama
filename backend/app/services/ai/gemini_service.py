@@ -298,11 +298,16 @@ PATIENT:
 - Diet phase: {phase} ({phase_label})
 - Known allergies: {allergies}
 - Target calories: {target_kcal} kcal/day
+- Foods available at home: {available_foods}
 
 REQUIREMENTS:
 1. Use Kenya-local foods (Kiswahili names first): uji wa wimbi, ugali, sukuma wiki,
    maharagwe, samaki/tilapia, mtindi, viazi, ndizi, avocado, eggs, kunde, mchicha, etc.
-2. Respect phase restrictions strictly:
+2. If "Foods available at home" lists specific ingredients, PRIORITISE building meals
+   around those ingredients. Only supplement with other foods if the listed items alone
+   cannot meet the phase nutritional requirements. This makes the plan practical for
+   what the patient actually has in their kitchen today.
+3. Respect phase restrictions strictly:
    - clear_liquid: only broth, water, weak chai, fruit juice (no pulp)
    - full_liquid: uji, mtindi, blended soups, fresh juices
    - soft_diet: soft ugali, mashed viazi, well-cooked vegetables, soft proteins (eggs, flaked fish)
@@ -742,13 +747,21 @@ class GeminiService:
         phase_label: str,
         target_kcal: int,
         allergies: list[str] | None = None,
+        available_foods: list[str] | None = None,
     ) -> dict:
         """
         Generate a structured daily meal plan (breakfast/lunch/dinner/snack)
         with Kenya-local foods and per-item macro breakdowns.
+        If available_foods is provided, Gemini prioritises those ingredients.
         """
         if not self.available:
             return self._fallback_meal_plan(phase, phase_label, target_kcal)
+
+        foods_text = (
+            ", ".join(available_foods)
+            if available_foods
+            else "Not specified — use typical Kenya-local recovery foods"
+        )
 
         prompt = MEAL_PLAN_PROMPT.format(
             surgery_type=surgery_type,
@@ -757,6 +770,7 @@ class GeminiService:
             phase_label=phase_label,
             target_kcal=target_kcal,
             allergies=", ".join(allergies or []) or "None",
+            available_foods=foods_text,
         )
 
         try:

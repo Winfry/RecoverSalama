@@ -82,11 +82,14 @@ class ApiService {
     required String surgeryType,
     required int daysSinceSurgery,
     required List<String> allergies,
+    List<String> availableFoods = const [],
   }) async {
     return _dio.get('/api/recovery/meal_plan', queryParameters: {
       'surgery_type': surgeryType,
       'day': daysSinceSurgery,
       'allergies': allergies.join(','),
+      if (availableFoods.isNotEmpty)
+        'available_foods': availableFoods.join(','),
     });
   }
 
