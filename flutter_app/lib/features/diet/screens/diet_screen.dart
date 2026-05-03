@@ -12,7 +12,6 @@ import '../providers/diet_provider.dart';
 const _kPrimary  = AppColors.primary;
 const _kGreen    = Color(0xFF22C55E);
 const _kAmber    = Color(0xFFFFB703);
-const _kPurple   = Color(0xFF8B5CF6);
 const _kRed      = Color(0xFFEF4444);
 
 const _kMealBg = {
@@ -97,11 +96,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
-
-  String _monthAbbr(int m) => const [
-    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ][m];
 
   void _selectDay(DateTime date) {
     if (_isSameDay(date, _selectedDate)) return;
@@ -1588,8 +1582,8 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
           ],
         ),
         const SizedBox(height: 18),
-        const Text('Choose a new $_label option',
-            style: TextStyle(
+        Text('Choose a new $_label option',
+            style: const TextStyle(
                 fontSize: 13, fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary)),
         const SizedBox(height: 8),

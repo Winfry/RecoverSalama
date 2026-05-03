@@ -65,16 +65,19 @@ class DashboardScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        // Notification bell
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(12),
+                        // Settings gear
+                        GestureDetector(
+                          onTap: () => context.go(AppRoutes.settings),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.settings_outlined,
+                                color: AppColors.textSecondary, size: 22),
                           ),
-                          child: const Icon(Icons.notifications_outlined,
-                              color: AppColors.textSecondary, size: 22),
                         ),
                       ],
                     ),
@@ -136,6 +139,12 @@ class DashboardScreen extends ConsumerWidget {
                         ? recovery.aiTip
                         : _defaultTip(day),
                     onChat: () => context.go(AppRoutes.aiChat),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Mental health check-in card
+                  _MentalHealthCard(
+                    onTap: () => context.go(AppRoutes.mentalHealth),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -435,6 +444,76 @@ class _MealsPreview extends StatelessWidget {
     if (day <= 2) return [{'icon': '☕', 'name': 'Tea'}, {'icon': '🍲', 'name': 'Broth'}, {'icon': '💧', 'name': 'Water'}];
     if (day <= 4) return [{'icon': '🥣', 'name': 'Uji'}, {'icon': '🥛', 'name': 'Maziwa'}, {'icon': '💧', 'name': 'Water'}];
     return [{'icon': '🫓', 'name': 'Ugali'}, {'icon': '🌿', 'name': 'Sukuma Wiki'}, {'icon': '💧', 'name': 'Water 2.5L'}];
+  }
+}
+
+class _MentalHealthCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _MentalHealthCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF7C3AED), Color(0xFFDB2777)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF7C3AED).withOpacity(0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('💜 Mental Health Check-In',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  const Text(
+                    "How are you feeling emotionally today?\nIt's okay to not be okay.",
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        height: 1.5),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text('Check In Now →',
+                        style: TextStyle(
+                            color: Color(0xFF7C3AED),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('🌸', style: TextStyle(fontSize: 44)),
+          ],
+        ),
+      ),
+    );
   }
 }
 
