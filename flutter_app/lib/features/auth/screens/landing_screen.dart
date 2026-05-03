@@ -2,15 +2,14 @@
 // SalamaRecover — Screen 01: Landing Page
 // The first screen every patient sees. Gradient hero, bilingual
 // toggle, two CTAs, and four benefit cards.
-// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
-// ─────────────────────────────────────────────────────────────
+// © 2026 Winfry Nyarangi Nyabuto. All Rights Reserved.
+//
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../shared/widgets/salama_widgets.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -22,256 +21,259 @@ class LandingScreen extends StatefulWidget {
 class _LandingScreenState extends State<LandingScreen> {
   String _lang = 'EN';
 
-  // Bilingual copy — all text switches instantly on toggle
   final Map<String, Map<String, String>> _copy = {
     'EN': {
-      'tag': 'Recover Safely. Heal Confidently.',
-      'sub':
-          'AI-guided recovery tailored to your surgery, your life, and your healing.',
-      'start': 'Start Recovery Plan →',
-      'guest': 'Guest Mode',
-      'label': 'WHAT YOU GET',
+      'title': 'Recover better\nwith Pona Salama',
+      'sub': 'Personalised care. Local guidance.\nBacked by AI and doctors.',
+      'start': 'Start Recovery Plan',
+      'guest': 'Continue in Guest Mode',
     },
-    'SW': {
-      'tag': 'Pona Salama. Pumzika kwa Amani.',
-      'sub':
-          'Mshauri wako wa kibinafsi wa kupona baada ya upasuaji wako.',
-      'start': 'Anza Mpango wa Kupona →',
-      'guest': 'Kuingia Bila Akaunti',
-      'label': 'UTAKACHOPATA',
+    'KW': {
+      'title': 'Pona vizuri zaidi\nna Pona Salama',
+      'sub': 'Huduma ya kibinafsi. Mwongozo wa ndani.\nKwa AI na madaktari.',
+      'start': 'Anza Mpango wa Kupona',
+      'guest': 'Endelea Bila Akaunti',
     },
   };
+
+  final _features = [
+    {'icon': '🤖', 'title': 'AI Guidance', 'desc': 'Smart answers\nfor your questions'},
+    {'icon': '🥗', 'title': 'Kenya Diet', 'desc': 'Local foods for\nfaster healing'},
+    {'icon': '🧠', 'title': 'Mental Health', 'desc': 'Support your\nmind every day'},
+    {'icon': '🏥', 'title': 'Doctor Connect', 'desc': 'Talk or call\na professional'},
+  ];
 
   @override
   Widget build(BuildContext context) {
     final t = _copy[_lang]!;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          // ── HERO SECTION ──────────────────────────────────
-          // Gradient from #0077B6 (blue) → #005f8e → #00B37E (green)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0077B6),
-                  Color(0xFF005f8e),
-                  Color(0xFF00B37E),
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Top bar ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.menu_rounded,
+                      size: 26, color: AppColors.textPrimary),
+                  const Spacer(),
+                  _LangToggle(
+                    lang: _lang,
+                    onToggle: () =>
+                        setState(() => _lang = _lang == 'EN' ? 'KW' : 'EN'),
+                  ),
                 ],
-                stops: [0.0, 0.55, 1.0],
               ),
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Top bar: logo + language toggle ──
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    // ── Heading ──
+                    Text(
+                      t['title']!,
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      t['sub']!,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+
+                    // ── Illustration ──
+                    const SizedBox(height: 28),
+                    Container(
+                      width: double.infinity,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('💚 SalamaRecover',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800)),
-                            Text('SURGICAL RECOVERY AI',
-                                style: TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 9,
-                                    letterSpacing: 2)),
+                            Text('👩🏾', style: TextStyle(fontSize: 56)),
+                            SizedBox(width: 8),
+                            Text('👨🏾‍⚕️', style: TextStyle(fontSize: 64)),
+                            SizedBox(width: 8),
+                            Text('👵🏾', style: TextStyle(fontSize: 52)),
                           ],
                         ),
-                        // Language toggle — switches all text instantly
-                        GestureDetector(
-                          onTap: () => setState(
-                              () => _lang = _lang == 'EN' ? 'SW' : 'EN'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: Colors.white.withOpacity(0.3)),
-                            ),
-                            child: Text(
-                                _lang == 'EN'
-                                    ? '🌍 Kiswahili'
-                                    : '🌍 English',
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 12)),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
 
+                    // ── Feature cards 2×2 ──
                     const SizedBox(height: 28),
-
-                    // ── Hero card — frosted glass effect ──
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text('🩺',
-                              style: TextStyle(fontSize: 48)),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(t['tag']!,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        height: 1.35)),
-                                const SizedBox(height: 6),
-                                Text(t['sub']!,
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                        height: 1.5)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.5,
+                      children: _features
+                          .map((f) => _FeatureCard(
+                                icon: f['icon']!,
+                                title: f['title']!,
+                                desc: f['desc']!,
+                              ))
+                          .toList(),
                     ),
 
-                    // ── Primary CTA — white button ──
+                    // ── CTAs ──
+                    const SizedBox(height: 28),
                     SizedBox(
                       width: double.infinity,
+                      height: 52,
                       child: ElevatedButton(
-                        onPressed: () =>
-                            context.go(AppRoutes.login),
+                        onPressed: () => context.go(AppRoutes.login),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
-                          elevation: 3,
+                          elevation: 0,
                         ),
-                        child: Text(t['start']!,
-                            style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800)),
+                        child: Text(
+                          t['start']!,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ),
-
-                    const SizedBox(height: 10),
-
-                    // ── Secondary CTA — green outlined ──
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () =>
-                            context.go(AppRoutes.dashboard),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: BorderSide(
-                              color:
-                                  AppColors.success.withOpacity(0.5)),
-                          backgroundColor:
-                              AppColors.success.withOpacity(0.2),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                    const SizedBox(height: 14),
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => context.go(AppRoutes.dashboard),
+                        child: Text(
+                          t['guest']!,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        child: Text(t['guest']!,
-                            style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Center(
+                      child: Text(
+                        '🔒 Your data is private & secure',
+                        style: TextStyle(
+                            color: AppColors.textHint, fontSize: 11),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-          // ── BENEFIT CARDS ─────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(t['label']!,
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 1.5,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  BenefitCard(
-                      icon: '🤖',
-                      title: _lang == 'EN'
-                          ? 'AI Guidance'
-                          : 'Mwongozo wa AI',
-                      desc: _lang == 'EN'
-                          ? 'Ask anything about your recovery anytime'
-                          : 'Uliza chochote kuhusu kupona kwako'),
-                  BenefitCard(
-                      icon: '🥗',
-                      title: _lang == 'EN'
-                          ? 'Kenya Diet'
-                          : 'Lishe ya Kenya',
-                      desc: _lang == 'EN'
-                          ? 'Local foods that help you heal faster'
-                          : 'Vyakula vya ndani vinavyosaidia',
-                      isBlue: false),
-                  BenefitCard(
-                      icon: '🧠',
-                      title: _lang == 'EN'
-                          ? 'Mental Health'
-                          : 'Afya ya Akili',
-                      desc: _lang == 'EN'
-                          ? 'Daily check-ins for your emotional wellbeing'
-                          : 'Ukaguzi wa kila siku wa hali yako'),
-                  BenefitCard(
-                      icon: '🏥',
-                      title: _lang == 'EN'
-                          ? 'Doctor Connect'
-                          : 'Musiliano na Daktari',
-                      desc: _lang == 'EN'
-                          ? 'Reach hospitals and specialists instantly'
-                          : 'Wasiliana na hospitali mara moja',
-                      isBlue: false),
-                ],
-              ),
-            ),
-          ),
+class _LangToggle extends StatelessWidget {
+  final String lang;
+  final VoidCallback onToggle;
+  const _LangToggle({required this.lang, required this.onToggle});
 
-          // ── PRIVACY FOOTER ────────────────────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: const Text(
-              '🔒 Your data is private & secure · For informational support only',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textHint, fontSize: 10),
-            ),
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _pill('EN', lang == 'EN'),
+            _pill('KW', lang == 'KW'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pill(String label, bool active) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: active ? Colors.white : AppColors.textHint,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _FeatureCard extends StatelessWidget {
+  final String icon;
+  final String title;
+  final String desc;
+  const _FeatureCard(
+      {required this.icon, required this.title, required this.desc});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 24)),
+          const Spacer(),
+          Text(title,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 2),
+          Text(desc,
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary, height: 1.4)),
         ],
       ),
     );
