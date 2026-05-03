@@ -281,6 +281,18 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               ),
             ),
           ),
+
+          SalamaBottomNav(
+            currentIndex: 2,
+            onTap: (i) {
+              final routes = [
+                AppRoutes.dashboard, AppRoutes.diet,
+                AppRoutes.checkIn,   AppRoutes.aiChat,
+                AppRoutes.hospital,
+              ];
+              if (i < routes.length) context.go(routes[i]);
+            },
+          ),
         ],
       ),
     );
