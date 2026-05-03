@@ -304,13 +304,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     ];
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0077B6), Color(0xFF00B37E)],
-        ),
-      ),
+      color: AppColors.surface,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -326,22 +320,55 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     context.go(AppRoutes.landing);
                   }
                 },
-                child: const Text('← Back',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 14, color: AppColors.textSecondary),
+                    SizedBox(width: 4),
+                    Text('Back',
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13)),
+                  ],
+                ),
               ),
-              const SizedBox(height: 14),
-              SalamaProgressBar(currentStep: _step, totalSteps: 3),
+              const SizedBox(height: 16),
+              // Step indicator dots
+              Row(
+                children: List.generate(3, (i) {
+                  final done = i < _step - 1;
+                  final active = i == _step - 1;
+                  return Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: active ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: done || active
+                              ? AppColors.primary
+                              : AppColors.border,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      if (i < 2) const SizedBox(width: 4),
+                    ],
+                  );
+                }),
+              ),
               const SizedBox(height: 10),
               Text('Step $_step of 3',
-                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 11)),
               const SizedBox(height: 4),
               Text(titles[_step - 1],
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 22,
                       fontWeight: FontWeight.w800)),
               Text(subs[_step - 1],
-                  style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13)),
             ],
           ),
         ),

@@ -76,15 +76,9 @@ class _PreSurgeryScreenState extends ConsumerState<PreSurgeryScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Blue gradient header with progress bar ──────────
+          // ── Light header with step indicator ────────────────
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0077B6), Color(0xFF005f8e)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+            color: AppColors.surface,
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -92,33 +86,58 @@ class _PreSurgeryScreenState extends ConsumerState<PreSurgeryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Back → Profile Setup
                     GestureDetector(
                       onTap: () => context.go(AppRoutes.profileSetup),
-                      child: const Text('← Back',
-                          style: TextStyle(
-                              color: Colors.white70, fontSize: 13)),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_back_ios_new_rounded,
+                              size: 14,
+                              color: AppColors.textSecondary),
+                          SizedBox(width: 4),
+                          Text('Back',
+                              style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13)),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 12),
-
-                    // Progress bar — step 2 of 3
-                    const SalamaProgressBar(
-                        currentStep: 2, totalSteps: 3),
-                    const SizedBox(height: 8),
-
+                    const SizedBox(height: 16),
+                    Row(
+                      children: List.generate(3, (i) {
+                        return Row(
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: i == 1 ? 24 : 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: i <= 1
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            if (i < 2) const SizedBox(width: 4),
+                          ],
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 10),
                     const Text('Step 2 of 3',
                         style: TextStyle(
-                            color: Colors.white70, fontSize: 11)),
+                            color: AppColors.textSecondary,
+                            fontSize: 11)),
                     const SizedBox(height: 4),
                     const Text('Pre-Surgery Guidance',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 22,
                             fontWeight: FontWeight.w800)),
-                    const Text(
-                        'Get ready — physically & emotionally',
+                    const Text('Get ready — physically & emotionally',
                         style: TextStyle(
-                            color: Colors.white70, fontSize: 13)),
+                            color: AppColors.textSecondary,
+                            fontSize: 13)),
                   ],
                 ),
               ),

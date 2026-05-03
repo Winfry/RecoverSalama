@@ -8,21 +8,44 @@ import '../../../shared/widgets/salama_widgets.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../providers/diet_provider.dart';
 
-const _kPrimary = AppColors.primary;
-const _kGreen   = Color(0xFF22C55E);
-const _kAmber   = Color(0xFFFFB703);
-const _kPurple  = Color(0xFF8B5CF6);
-const _kRed     = Color(0xFFEF4444);
+// ── Design tokens ────────────────────────────────────────────
+const _kPrimary  = AppColors.primary;
+const _kGreen    = Color(0xFF22C55E);
+const _kAmber    = Color(0xFFFFB703);
+const _kPurple   = Color(0xFF8B5CF6);
+const _kRed      = Color(0xFFEF4444);
 
-const _kDayNames   = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const _kMealBg = {
+  'breakfast': Color(0xFFFFF8E7),
+  'lunch':     Color(0xFFEDF7ED),
+  'dinner':    Color(0xFFF5F0FF),
+  'snack':     Color(0xFFE3F2FD),
+};
+const _kMealAccent = {
+  'breakfast': Color(0xFFFFB703),
+  'lunch':     Color(0xFF22C55E),
+  'dinner':    Color(0xFF8B5CF6),
+  'snack':     Color(0xFF3B82F6),
+};
+const _kMealIcons  = {'breakfast': '🌅', 'lunch': '☀️', 'dinner': '🌙', 'snack': '🍎'};
+const _kMealLabels = {'breakfast': 'Breakfast', 'lunch': 'Lunch', 'dinner': 'Dinner', 'snack': 'Snack'};
 const _kMealOrder  = ['breakfast', 'lunch', 'dinner', 'snack'];
-const _kMealIcons  = {
-  'breakfast': '🌅', 'lunch': '☀️', 'dinner': '🌙', 'snack': '🍎',
-};
-const _kMealLabels = {
-  'breakfast': 'Breakfast', 'lunch': 'Lunch',
-  'dinner': 'Dinner', 'snack': 'Snack',
-};
+
+// Popular Kenya recovery foods (tappable chips)
+const _kPopularFoods = [
+  {'emoji': '🍚', 'name': 'Ugali'},
+  {'emoji': '🫘', 'name': 'Beans'},
+  {'emoji': '🍌', 'name': 'Banana'},
+  {'emoji': '🥛', 'name': 'Milk'},
+  {'emoji': '🥑', 'name': 'Avocado'},
+  {'emoji': '🫓', 'name': 'Chapati'},
+  {'emoji': '🥚', 'name': 'Eggs'},
+  {'emoji': '🌿', 'name': 'Sukuma Wiki'},
+  {'emoji': '🍅', 'name': 'Tomato'},
+  {'emoji': '🍊', 'name': 'Orange'},
+  {'emoji': '🐟', 'name': 'Fish'},
+  {'emoji': '🍗', 'name': 'Chicken'},
+];
 
 class DietScreen extends ConsumerStatefulWidget {
   const DietScreen({super.key});
@@ -34,7 +57,6 @@ class DietScreen extends ConsumerStatefulWidget {
 class _DietScreenState extends ConsumerState<DietScreen> {
   late DateTime _weekStart;
   late DateTime _selectedDate;
-  final _pantryCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -42,21 +64,19 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     final now = DateTime.now();
     _weekStart    = now.subtract(Duration(days: now.weekday - 1));
     _selectedDate = DateTime(now.year, now.month, now.day);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDate(_selectedDate));
   }
 
-  @override
-  void dispose() {
-    _pantryCtrl.dispose();
-    super.dispose();
-  }
+  // ── Helpers ───────────────────────────────────────────────
 
-  void _loadForDate(DateTime date) {
+  void _generatePlan() {
     final profile = ref.read(profileProvider);
-    if (profile.surgeryType.isEmpty) return;
+    if (profile.surgeryType.isEmpty) {
+      context.go(AppRoutes.profileSetup);
+      return;
+    }
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
-    final diff = date.difference(todayDate).inDays;
+    final diff = _selectedDate.difference(todayDate).inDays;
     final targetDay = (profile.daysSinceSurgery + diff).clamp(0, 730);
     final allergies = [
       ...profile.allergies,
@@ -69,38 +89,87 @@ class _DietScreenState extends ConsumerState<DietScreen> {
         );
   }
 
-  void _selectDay(DateTime date) {
-    if (_isSameDay(date, _selectedDate)) return;
-    setState(() => _selectedDate = date);
-    _loadForDate(date);
+  void _addIngredient(String item) {
+    final trimmed = item.trim();
+    if (trimmed.isEmpty) return;
+    ref.read(dietProvider.notifier).addPantryItem(trimmed);
   }
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _monthAbbr(int m) => const [
-        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m];
+    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ][m];
 
-  String _dateRangeLabel() {
-    final end = _weekStart.add(const Duration(days: 6));
-    return '${_monthAbbr(_weekStart.month)} ${_weekStart.day} – '
-        '${_monthAbbr(end.month)} ${end.day}';
+  void _selectDay(DateTime date) {
+    if (_isSameDay(date, _selectedDate)) return;
+    setState(() => _selectedDate = date);
   }
+
+  // ── Build ─────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final diet    = ref.watch(dietProvider);
     final profile = ref.watch(profileProvider);
+    final hasPlan = diet.mealPlan != null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFB),
       body: Column(
         children: [
-          _buildHeader(diet),
-          _buildDaySelector(),
-          Expanded(child: _buildBody(diet, profile)),
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Hero illustration + heading
+                  _buildHero(),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+
+                        // Section 1: Ingredient input
+                        _buildIngredientsSection(diet),
+                        const SizedBox(height: 16),
+
+                        // Popular foods horizontal scroll
+                        _buildPopularFoods(diet),
+                        const SizedBox(height: 16),
+
+                        // CTA button
+                        _buildCreatePlanCTA(diet),
+                        const SizedBox(height: 20),
+
+                        // Week overview strip
+                        _buildWeekOverview(),
+                        const SizedBox(height: 20),
+
+                        // Meal plan results (only when loaded)
+                        if (diet.isLoading)
+                          _buildGeneratingState()
+                        else if (hasPlan) ...[
+                          _buildMealsSection(diet, profile),
+                          const SizedBox(height: 16),
+                          _buildWhyItWorks(diet),
+                          const SizedBox(height: 16),
+                          _buildActionRow(diet, profile),
+                          const SizedBox(height: 20),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           SalamaBottomNav(
             currentIndex: 1,
             onTap: (i) {
@@ -117,57 +186,41 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
-  // ── Header ────────────────────────────────────────────────
+  // ── Header bar ────────────────────────────────────────────
 
-  Widget _buildHeader(DietState diet) {
-    final phaseLabel = diet.mealPlan?.phaseLabel.isNotEmpty == true
-        ? diet.mealPlan!.phaseLabel
-        : diet.phaseLabel;
-
+  Widget _buildHeader() {
     return Container(
-      color: AppColors.surface,
+      color: Colors.white,
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Let's plan today's meals 🥗",
-                      style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _dateRangeLabel(),
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 12),
-                    ),
-                  ],
+              GestureDetector(
+                onTap: () => context.go(AppRoutes.dashboard),
+                child: const Icon(Icons.arrow_back_rounded,
+                    size: 22, color: AppColors.textPrimary),
+              ),
+              const Expanded(
+                child: Text(
+                  'Weekly Diet Plan',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary),
                 ),
               ),
-              if (phaseLabel.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    phaseLabel,
-                    style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600),
-                  ),
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(Icons.info_outline_rounded,
+                    size: 18, color: AppColors.textSecondary),
+              ),
             ],
           ),
         ),
@@ -175,203 +228,96 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
-  // ── Day selector ──────────────────────────────────────────
+  // ── Hero ──────────────────────────────────────────────────
 
-  Widget _buildDaySelector() {
+  Widget _buildHero() {
     return Container(
-      color: AppColors.surface,
-      height: 72,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-        itemCount: 7,
-        itemBuilder: (_, i) {
-          final date     = _weekStart.add(Duration(days: i));
-          final selected = _isSameDay(date, _selectedDate);
-          return _buildDayChip(date, i, selected);
-        },
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(20, 20, 12, 0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE6F9F5),
+        borderRadius: BorderRadius.circular(20),
       ),
-    );
-  }
-
-  Widget _buildDayChip(DateTime date, int weekdayIndex, bool selected) {
-    return GestureDetector(
-      onTap: () => _selectDay(date),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 46,
-        margin: const EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
-          color: selected ? _kPrimary : AppColors.background,
-          borderRadius: BorderRadius.circular(12),
-          border: selected
-              ? null
-              : Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _kDayNames[weekdayIndex],
-              style: TextStyle(
-                color: selected ? Colors.white : AppColors.textSecondary,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${date.day}',
-              style: TextStyle(
-                color: selected ? Colors.white : AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Body dispatcher ───────────────────────────────────────
-
-  Widget _buildBody(DietState diet, PatientProfile profile) {
-    if (profile.surgeryType.isEmpty) return _buildSetupPrompt();
-    if (diet.isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: _kPrimary),
-            SizedBox(height: 16),
-            Text('Building your AI meal plan…',
-                style: TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13)),
-          ],
-        ),
-      );
-    }
-    if (diet.errorMessage.isNotEmpty) return _buildError(diet);
-    if (diet.mealPlan == null) {
-      return const Center(
-        child: Text('No meal plan loaded.',
-            style: TextStyle(color: AppColors.textSecondary)),
-      );
-    }
-    return _buildPlanContent(diet, profile);
-  }
-
-  Widget _buildSetupPrompt() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('🥗', style: TextStyle(fontSize: 52)),
-            const SizedBox(height: 16),
-            const Text('Complete your profile first',
-                style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            const Text(
-              'Your diet plan is personalised by surgery type and recovery day.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            SalamaButton(
-              label: 'Set Up Profile →',
-              onTap: () => context.go(AppRoutes.profileSetup),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildError(DietState diet) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('⚠️', style: TextStyle(fontSize: 44)),
-            const SizedBox(height: 12),
-            Text(diet.errorMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13)),
-            const SizedBox(height: 20),
-            SalamaButton(
-              label: 'Try Again',
-              onTap: () {
-                ref.read(dietProvider.notifier).clearError();
-                _loadForDate(_selectedDate);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Plan content ──────────────────────────────────────────
-
-  Widget _buildPlanContent(DietState diet, PatientProfile profile) {
-    final plan = diet.mealPlan!;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _buildContextStrip(profile, diet),
-          const SizedBox(height: 12),
-
-          _buildPantrySection(diet, profile),
-          const SizedBox(height: 14),
-
-          _buildMacroCard(plan),
-          const SizedBox(height: 14),
-
-          if (diet.aiTip.isNotEmpty) ...[
-            _buildAiTip(diet.aiTip),
-            const SizedBox(height: 14),
-          ],
-
-          for (final mealType in _kMealOrder)
-            if (plan.meals.containsKey(mealType)) ...[
-              _buildMealCard(
-                mealType: mealType,
-                meal: plan.meals[mealType]!,
-                plan: plan,
-                profile: profile,
-              ),
-              const SizedBox(height: 12),
-            ],
-
-          if (diet.avoidList.isNotEmpty) ...[
-            _buildAvoidSection(diet.avoidList),
-            const SizedBox(height: 12),
-          ],
-
-          const Padding(
-            padding: EdgeInsets.only(top: 4, bottom: 8),
-            child: Row(
+          // Text content
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.menu_book_outlined,
-                    size: 11, color: AppColors.textHint),
-                SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    'Kenya National Clinical Nutrition Manual (MOH 2010)',
-                    style: TextStyle(
-                        color: AppColors.textHint, fontSize: 10),
+                Text(
+                  "Let's plan today's\nmeals together 🍳",
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1.25),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  "Tell us what you have, and we'll create recovery-friendly meals just for you.",
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.5),
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Illustration placeholder — chef with vegetables
+          SizedBox(
+            width: 100,
+            height: 120,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Backdrop circle
+                Positioned(
+                  bottom: 0, left: 5, right: 5,
+                  child: Container(
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(50)),
+                    ),
+                  ),
+                ),
+                // Chef emoji (centred)
+                const Positioned(
+                  bottom: 4,
+                  left: 0, right: 0,
+                  child: Text('👩🏾‍🍳',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 52)),
+                ),
+                // Leaf accent
+                Positioned(
+                  top: 0, right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: _kGreen.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text('🌿',
+                        style: TextStyle(fontSize: 14)),
+                  ),
+                ),
+                // Veggie accent
+                Positioned(
+                  top: 20, left: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: _kAmber.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text('🥕',
+                        style: TextStyle(fontSize: 12)),
                   ),
                 ),
               ],
@@ -382,541 +328,804 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
-  // ── Pantry ────────────────────────────────────────────────
+  // ── Section 1: Ingredients ────────────────────────────────
 
-  Widget _buildPantrySection(DietState diet, PatientProfile profile) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kGreen.withOpacity(0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Text('🥘', style: TextStyle(fontSize: 16)),
-              SizedBox(width: 8),
-              Text(
-                "What's in your kitchen today?",
-                style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            "Add foods you have and we'll build meals around them.",
-            style: TextStyle(
-                color: AppColors.textSecondary, fontSize: 11),
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _pantryCtrl,
-                  style: const TextStyle(
-                      color: AppColors.textPrimary, fontSize: 13),
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. Eggs, Ugali, Sukuma wiki…',
-                    hintStyle: const TextStyle(
-                        color: AppColors.textHint, fontSize: 12),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          const BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: AppColors.primary, width: 1.5),
-                    ),
-                  ),
-                  onSubmitted: _addPantryItem,
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => _addPantryItem(_pantryCtrl.text),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: _kGreen,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text('+ Add',
+  Widget _buildIngredientsSection(DietState diet) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('1. What do you have at home today?',
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
-                ),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  SizedBox(height: 2),
+                  Text('Add ingredients you have available',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary)),
+                ],
               ),
-            ],
-          ),
-
-          if (diet.pantryItems.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: diet.pantryItems
-                  .map((item) => _pantryChip(item))
-                  .toList(),
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: diet.isLoading
-                    ? null
-                    : () => _loadForDate(_selectedDate),
-                icon: diet.isLoading
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text('✨',
-                        style: TextStyle(fontSize: 14)),
-                label: Text(
-                  diet.isLoading
-                      ? 'Generating…'
-                      : 'Generate meals with my ingredients',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700),
+            GestureDetector(
+              onTap: () => _showTipsSheet(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E7),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: _kAmber.withOpacity(0.4)),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kPrimary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('💡', style: TextStyle(fontSize: 11)),
+                    SizedBox(width: 4),
+                    Text('Tips',
+                        style: TextStyle(
+                            color: _kAmber,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                  ],
                 ),
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 10),
 
-  void _addPantryItem(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return;
-    ref.read(dietProvider.notifier).addPantryItem(trimmed);
-    _pantryCtrl.clear();
-  }
-
-  Widget _pantryChip(String item) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: _kGreen.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kGreen.withOpacity(0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(item,
-              style: const TextStyle(
-                  color: _kGreen,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () =>
-                ref.read(dietProvider.notifier).removePantryItem(item),
-            child: const Icon(Icons.close, size: 13, color: _kGreen),
+        // Ingredient chips row
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ...diet.pantryItems.map((item) => _ingredientChip(item)),
+              // "+ Add more" button
+              GestureDetector(
+                onTap: () => _showAddIngredientsSheet(diet),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: _kPrimary.withOpacity(0.3),
+                        style: BorderStyle.solid),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded,
+                          size: 14, color: _kPrimary),
+                      const SizedBox(width: 4),
+                      const Text('Add more',
+                          style: TextStyle(
+                              color: _kPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // ── Context strip ─────────────────────────────────────────
-
-  Widget _buildContextStrip(PatientProfile profile, DietState diet) {
-    final today = DateTime.now();
-    final todayDate = DateTime(today.year, today.month, today.day);
-    final diff = _selectedDate.difference(todayDate).inDays;
-    final displayDay = profile.daysSinceSurgery + diff;
-
-    return Row(
-      children: [
-        _contextChip(Icons.medical_services_outlined,
-            profile.surgeryType.isNotEmpty ? profile.surgeryType : 'Surgery type',
-            _kPrimary),
-        const SizedBox(width: 8),
-        _contextChip(Icons.today_outlined, 'Day $displayDay of recovery', _kGreen),
+        ),
       ],
     );
   }
 
-  Widget _contextChip(IconData icon, String label, Color color) {
+  Widget _ingredientChip(String item) {
+    // Emoji lookup
+    final emoji = _kPopularFoods.firstWhere(
+            (f) => (f['name'] as String).toLowerCase() == item.toLowerCase(),
+            orElse: () => {'emoji': '🥄', 'name': item})['emoji'] as String;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 1)),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Text(emoji, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600)),
+          Text(item,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () =>
+                ref.read(dietProvider.notifier).removePantryItem(item),
+            child: const Icon(Icons.close_rounded,
+                size: 13, color: AppColors.textHint),
+          ),
         ],
       ),
     );
   }
 
-  // ── Macro card ────────────────────────────────────────────
+  // ── Popular foods ─────────────────────────────────────────
 
-  Widget _buildMacroCard(MealPlan plan) {
+  Widget _buildPopularFoods(DietState diet) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Popular foods near you',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            GestureDetector(
+              onTap: () => _showAddIngredientsSheet(diet),
+              child: const Text('Tap to add',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: _kPrimary,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _kPopularFoods.map((food) {
+              final name = food['name'] as String;
+              final emoji = food['emoji'] as String;
+              final added = diet.pantryItems.any(
+                  (i) => i.toLowerCase() == name.toLowerCase());
+              return GestureDetector(
+                onTap: added
+                    ? null
+                    : () => _addIngredient(name),
+                child: Container(
+                  width: 72,
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: added
+                        ? AppColors.primaryLight
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: added
+                          ? _kPrimary.withOpacity(0.3)
+                          : AppColors.border,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(emoji,
+                          style: const TextStyle(fontSize: 24)),
+                      const SizedBox(height: 5),
+                      Text(name,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: added
+                                  ? _kPrimary
+                                  : AppColors.textPrimary)),
+                      if (added)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(Icons.check_circle_rounded,
+                              size: 11, color: _kPrimary),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Create meal plan CTA ──────────────────────────────────
+
+  Widget _buildCreatePlanCTA(DietState diet) {
+    return GestureDetector(
+      onTap: diet.isLoading ? null : _generatePlan,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00B494), Color(0xFF00C896)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: _kPrimary.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4)),
+          ],
+        ),
+        child: diet.isLoading
+            ? const Center(
+                child: SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2.5),
+                ),
+              )
+            : Column(
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('✨ ',
+                          style: TextStyle(fontSize: 16)),
+                      Text('Create my meal plan',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    diet.mealPlan == null
+                        ? 'AI will generate meals for your recovery needs'
+                        : 'Tap to regenerate with current ingredients',
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  // ── Week overview ─────────────────────────────────────────
+
+  Widget _buildWeekOverview() {
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Daily Targets',
-              style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 14),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _macroStat('🔥', '${plan.targetKcal}', 'kcal', _kPrimary),
-              _macroStat('💪', '${plan.targetProteinG.toInt()}g', 'Protein', _kGreen),
-              _macroStat('🌾', '${plan.targetCarbsG.toInt()}g', 'Carbs', _kAmber),
-              _macroStat('🥑', '${plan.targetFatG.toInt()}g', 'Fat', _kPurple),
+              const Text('WEEKLY OVERVIEW',
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: _kPrimary,
+                      letterSpacing: 0.8)),
+              GestureDetector(
+                onTap: () {},
+                child: const Text('View full week',
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: _kPrimary,
+                        fontWeight: FontWeight.w600)),
+              ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _macroStat(String emoji, String value, String label, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 16)),
-          const SizedBox(height: 4),
-          Text(value,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800)),
-          Text(label,
-              style: const TextStyle(
-                  color: AppColors.textHint, fontSize: 9)),
-        ],
-      ),
-    );
-  }
-
-  // ── AI tip ────────────────────────────────────────────────
-
-  Widget _buildAiTip(String tip) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: _kGreen.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kGreen.withOpacity(0.22)),
-      ),
-      child: Row(
-        children: [
-          const Text('🤖', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(tip,
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 12,
-                    height: 1.5)),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(7, (i) {
+              final date = _weekStart.add(Duration(days: i));
+              final isSelected = _isSameDay(date, _selectedDate);
+              final isToday = _isSameDay(date, DateTime.now());
+              final isPast = date.isBefore(DateTime.now()) && !isToday;
+              return GestureDetector(
+                onTap: () => _selectDay(date),
+                child: Column(
+                  children: [
+                    Text(days[i],
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: isSelected
+                                ? _kPrimary
+                                : AppColors.textSecondary,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w400)),
+                    const SizedBox(height: 6),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 30, height: 30,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? _kPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: isToday && !isSelected
+                            ? Border.all(
+                                color: _kPrimary, width: 1.5)
+                            : null,
+                      ),
+                      child: Center(
+                        child: isPast && !isSelected
+                            ? const Icon(Icons.check_rounded,
+                                size: 13, color: _kGreen)
+                            : Text('${date.day}',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : isToday
+                                            ? _kPrimary
+                                            : AppColors
+                                                .textSecondary)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ),
         ],
       ),
     );
   }
 
-  // ── Meal card ─────────────────────────────────────────────
+  // ── Generating state ──────────────────────────────────────
+
+  Widget _buildGeneratingState() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          const Text('🍲',
+              style: TextStyle(fontSize: 48)),
+          const SizedBox(height: 12),
+          const Text('Creating your meal plan…',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 4),
+          const Text('This may take a few seconds',
+              style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 20),
+          ...[
+            'Analyzing ingredients',
+            'Checking nutrition needs',
+            'Creating balanced meals',
+            'Almost done!',
+          ].asMap().entries.map((e) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline_rounded,
+                        size: 16, color: _kPrimary),
+                    const SizedBox(width: 10),
+                    Text(e.value,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary)),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  // ── Section 3: Meal cards ─────────────────────────────────
+
+  Widget _buildMealsSection(DietState diet, PatientProfile profile) {
+    final plan = diet.mealPlan!;
+    final meals = _kMealOrder
+        .where((k) => plan.meals.containsKey(k))
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('3. Your recommended meals for today',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: _kGreen.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text('Personalized for you',
+                  style: TextStyle(
+                      fontSize: 9,
+                      color: _kGreen,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Horizontal scroll of meal cards
+        SizedBox(
+          height: 230,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: meals.length,
+            itemBuilder: (_, i) => _buildMealCard(
+              mealType: meals[i],
+              meal: plan.meals[meals[i]]!,
+              profile: profile,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildMealCard({
     required String mealType,
     required MealDetail meal,
-    required MealPlan plan,
     required PatientProfile profile,
   }) {
-    final icon  = _kMealIcons[mealType]  ?? '🍽️';
-    final label = _kMealLabels[mealType] ?? mealType;
+    final bg     = _kMealBg[mealType]     ?? Colors.white;
+    final accent = _kMealAccent[mealType] ?? _kPrimary;
+    final icon   = _kMealIcons[mealType]  ?? '🍽️';
+    final label  = _kMealLabels[mealType] ?? mealType;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
-              const SizedBox(width: 8),
-              Text(label.toUpperCase(),
-                  style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1)),
-              const Spacer(),
-              _scoreBadge(meal.score),
-            ],
-          ),
-          const SizedBox(height: 10),
+    // Derive nutrient badge from meal score / name
+    final badgeInfo = _mealBadge(mealType, meal.score);
 
-          Text(meal.name,
-              style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700)),
-          if (meal.description.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(meal.description,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 12)),
-          ],
-
-          const SizedBox(height: 12),
-          const Divider(color: AppColors.divider, height: 1),
-          const SizedBox(height: 10),
-
-          ...meal.items.map(_buildItemRow),
-
-          const SizedBox(height: 10),
-          const Divider(color: AppColors.divider, height: 1),
-          const SizedBox(height: 10),
-
-          Row(
-            children: [
-              const Text('Total',
+    return GestureDetector(
+      onTap: () => _showSwapSheet(mealType, meal, profile),
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Meal type tag
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: Text(label,
                   style: TextStyle(
-                      color: AppColors.textSecondary,
                       fontSize: 11,
+                      color: accent,
                       fontWeight: FontWeight.w600)),
-              const Spacer(),
-              _macroChip('${meal.totalCalories}', 'cal', _kPrimary),
-              const SizedBox(width: 4),
-              _macroChip('${meal.totalProteinG.toInt()}g', 'P', _kGreen),
-              const SizedBox(width: 4),
-              _macroChip('${meal.totalCarbsG.toInt()}g', 'C', _kAmber),
-              const SizedBox(width: 4),
-              _macroChip('${meal.totalFatG.toInt()}g', 'F', _kPurple),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _showChangeMealSheet(
-                context: context,
-                mealType: mealType,
-                meal: meal,
-                plan: plan,
-                profile: profile,
+            ),
+            // Meal name
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+              child: Text(meal.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1.2)),
+            ),
+            // Description
+            if (meal.description.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 3, 12, 0),
+                child: Text(meal.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                        height: 1.4)),
               ),
-              icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-              label: const Text('Change Meal'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.border),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+            // Food illustration (emoji in circle)
+            Expanded(
+              child: Center(
+                child: Text(icon,
+                    style: const TextStyle(fontSize: 40)),
               ),
             ),
-          ),
-        ],
+            // Nutrient badge
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(badgeInfo['icon'] as String,
+                        style: const TextStyle(fontSize: 10)),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(badgeInfo['text'] as String,
+                          style: TextStyle(
+                              fontSize: 9,
+                              color: accent,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildItemRow(MealItemDetail item) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          const Text('•',
-              style: TextStyle(
-                  color: AppColors.textHint, fontSize: 12)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(item.name,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 12)),
-          ),
-          _tinyChip('${item.calories}cal'),
-          const SizedBox(width: 3),
-          _tinyChip('P${item.proteinG.toInt()}g'),
-          const SizedBox(width: 3),
-          _tinyChip('C${item.carbsG.toInt()}g'),
-          const SizedBox(width: 3),
-          _tinyChip('F${item.fatG.toInt()}g'),
-        ],
-      ),
-    );
+  Map<String, String> _mealBadge(String mealType, int score) {
+    final badges = {
+      'breakfast': {'icon': '⭐', 'text': 'High in Protein'},
+      'lunch':     {'icon': '🌿', 'text': 'Iron + Fibre'},
+      'dinner':    {'icon': '💜', 'text': 'Easy to Digest'},
+      'snack':     {'icon': '⚡', 'text': 'Quick Energy'},
+    };
+    return (badges[mealType] ?? {'icon': '✅', 'text': 'Balanced'})
+        .cast<String, String>();
   }
 
-  Widget _scoreBadge(int score) {
-    final color = score >= 8 ? _kGreen : score >= 5 ? _kAmber : _kRed;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text('$score/10',
-          style: TextStyle(
-              color: color, fontSize: 10, fontWeight: FontWeight.w700)),
-    );
-  }
+  // ── Section 4: Why it works ───────────────────────────────
 
-  Widget _macroChip(String value, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text('$value $label',
-          style: TextStyle(
-              color: color, fontSize: 10, fontWeight: FontWeight.w600)),
-    );
-  }
+  Widget _buildWhyItWorks(DietState diet) {
+    final reasons = [
+      {'emoji': '💪', 'text': 'Protein helps repair tissues and build strength'},
+      {'emoji': '💚', 'text': 'Iron supports blood recovery and energy'},
+      {'emoji': '💧', 'text': 'Fluids keep you hydrated and prevent fatigue'},
+    ];
 
-  Widget _tinyChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(text,
-          style: const TextStyle(
-              color: AppColors.textSecondary, fontSize: 9)),
-    );
-  }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('4. Why this works for your recovery',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            GestureDetector(
+              onTap: () {},
+              child: const Text('Learn more',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: _kPrimary,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: reasons.map((r) {
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(r['emoji']!,
+                        style: const TextStyle(fontSize: 22)),
+                    const SizedBox(height: 6),
+                    Text(r['text']!,
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                            height: 1.4)),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
 
-  // ── Avoid section ─────────────────────────────────────────
-
-  Widget _buildAvoidSection(List<String> avoidList) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kRed.withOpacity(0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        // AI tip if present
+        if (diet.aiTip.isNotEmpty) ...[
+          const SizedBox(height: 10),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _kRed.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFE6F9F5),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Text('🚫', style: TextStyle(fontSize: 11)),
-                SizedBox(width: 4),
-                Text('Avoid During Recovery',
-                    style: TextStyle(
-                        color: _kRed,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700)),
+                const Text('🤖',
+                    style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(diet.aiTip,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textPrimary,
+                          height: 1.5)),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          ...avoidList.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.cancel_outlined,
-                      color: _kRed, size: 14),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(item,
-                        style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
+      ],
+    );
+  }
+
+  // ── Action row ────────────────────────────────────────────
+
+  Widget _buildActionRow(DietState diet, PatientProfile profile) {
+    return Row(
+      children: [
+        _actionBtn(
+          Icons.bookmark_border_rounded,
+          'Save Plan',
+          onTap: () => _savePlan(),
+          outlined: true,
+        ),
+        const SizedBox(width: 8),
+        _actionBtn(
+          Icons.refresh_rounded,
+          'Regenerate',
+          onTap: diet.isLoading ? null : _generatePlan,
+          outlined: true,
+        ),
+        const SizedBox(width: 8),
+        _actionBtn(
+          Icons.swap_horiz_rounded,
+          'Swap a Meal',
+          onTap: () => _showMealPickerForSwap(diet, profile),
+          outlined: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _actionBtn(IconData icon, String label,
+      {VoidCallback? onTap, bool outlined = false}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 18, color: _kPrimary),
+              const SizedBox(height: 4),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  // ── Change meal sheet ─────────────────────────────────────
+  // ── Sheet launchers ───────────────────────────────────────
 
-  void _showChangeMealSheet({
-    required BuildContext context,
-    required String mealType,
-    required MealDetail meal,
-    required MealPlan plan,
-    required PatientProfile profile,
-  }) {
+  void _savePlan() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('✅  Meal plan saved!'),
+      backgroundColor: Color(0xFF22C55E),
+      duration: Duration(seconds: 2),
+    ));
+  }
+
+  void _showTipsSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('💡  Recovery Meal Tips',
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            ...const [
+              '• Add at least 1 protein source each meal (eggs, beans, meat)',
+              '• Include leafy greens for iron – sukuma wiki, spinach',
+              '• Drink 8+ glasses of water daily to help your wound heal',
+              '• Small frequent meals are better than large ones post-surgery',
+              '• Avoid spicy, fatty or fried foods for the first 2 weeks',
+            ].map((t) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(t,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.5)),
+                )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddIngredientsSheet(DietState diet) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _AddIngredientsSheet(
+        currentItems: diet.pantryItems,
+        onAdd: _addIngredient,
+        onRemove: (item) =>
+            ref.read(dietProvider.notifier).removePantryItem(item),
+        onDone: () => Navigator.pop(context),
+      ),
+    );
+  }
+
+  void _showSwapSheet(
+      String mealType, MealDetail meal, PatientProfile profile) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -924,32 +1133,361 @@ class _DietScreenState extends ConsumerState<DietScreen> {
       builder: (_) => _ChangeMealSheet(
         mealType: mealType,
         meal: meal,
-        plan: plan,
         profile: profile,
+      ),
+    );
+  }
+
+  void _showMealPickerForSwap(DietState diet, PatientProfile profile) {
+    final plan = diet.mealPlan;
+    if (plan == null) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Which meal do you want to swap?',
+                style: TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+            ..._kMealOrder
+                .where((k) => plan.meals.containsKey(k))
+                .map((mealType) {
+              final meal = plan.meals[mealType]!;
+              final accent = _kMealAccent[mealType] ?? _kPrimary;
+              final icon   = _kMealIcons[mealType]  ?? '🍽️';
+              return ListTile(
+                leading: Text(icon,
+                    style: const TextStyle(fontSize: 24)),
+                title: Text(_kMealLabels[mealType] ?? mealType,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: Text(meal.name,
+                    style: const TextStyle(fontSize: 11)),
+                trailing: Icon(Icons.swap_horiz_rounded,
+                    color: accent, size: 20),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSwapSheet(mealType, meal, profile);
+                },
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Change Meal Bottom Sheet
+// Add Ingredients Bottom Sheet
+// ─────────────────────────────────────────────────────────────
+
+class _AddIngredientsSheet extends StatefulWidget {
+  final List<String> currentItems;
+  final ValueChanged<String> onAdd;
+  final ValueChanged<String> onRemove;
+  final VoidCallback onDone;
+
+  const _AddIngredientsSheet({
+    required this.currentItems,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onDone,
+  });
+
+  @override
+  State<_AddIngredientsSheet> createState() => _AddIngredientsSheetState();
+}
+
+class _AddIngredientsSheetState extends State<_AddIngredientsSheet> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+  late List<String> _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = List.from(widget.currentItems);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, String>> get _filtered {
+    final q = _query.toLowerCase();
+    return q.isEmpty
+        ? _kPopularFoods.cast<Map<String, String>>()
+        : _kPopularFoods
+            .where((f) => (f['name'] as String)
+                .toLowerCase()
+                .contains(q))
+            .cast<Map<String, String>>()
+            .toList();
+  }
+
+  void _toggle(String name) {
+    setState(() {
+      if (_current.any((i) => i.toLowerCase() == name.toLowerCase())) {
+        _current.removeWhere(
+            (i) => i.toLowerCase() == name.toLowerCase());
+        widget.onRemove(name);
+      } else {
+        _current.add(name);
+        widget.onAdd(name);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.92,
+      minChildSize: 0.5,
+      expand: false,
+      builder: (_, scrollCtrl) => Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Add ingredients',
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700)),
+                TextButton(
+                  onPressed: widget.onDone,
+                  child: const Text('Cancel',
+                      style: TextStyle(color: AppColors.textSecondary)),
+                ),
+              ],
+            ),
+          ),
+          // Your ingredients chips
+          if (_current.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Your ingredients',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _current.map((item) {
+                      final emoji = _kPopularFoods.firstWhere(
+                              (f) =>
+                                  (f['name'] as String).toLowerCase() ==
+                                  item.toLowerCase(),
+                              orElse: () =>
+                                  {'emoji': '🥄', 'name': item})[
+                              'emoji'] as String;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: AppColors.primary
+                                  .withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(emoji,
+                                style:
+                                    const TextStyle(fontSize: 13)),
+                            const SizedBox(width: 4),
+                            Text(item,
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 4),
+                            GestureDetector(
+                              onTap: () => _toggle(item),
+                              child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 12,
+                                  color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          // Search field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'Search ingredient…',
+                hintStyle: const TextStyle(
+                    color: AppColors.textHint, fontSize: 13),
+                prefixIcon: const Icon(Icons.search_rounded,
+                    size: 18, color: AppColors.textHint),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.border),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('All ingredients',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ),
+          // Ingredient list
+          Expanded(
+            child: ListView.builder(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+              itemCount: _filtered.length,
+              itemBuilder: (_, i) {
+                final food = _filtered[i];
+                final name = food['name']!;
+                final emoji = food['emoji']!;
+                final added = _current.any(
+                    (item) => item.toLowerCase() == name.toLowerCase());
+                return ListTile(
+                  leading: Text(emoji,
+                      style: const TextStyle(fontSize: 24)),
+                  title: Text(name,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary)),
+                  trailing: GestureDetector(
+                    onTap: () => _toggle(name),
+                    child: Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: added
+                            ? AppColors.primaryLight
+                            : AppColors.background,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: added
+                              ? AppColors.primary
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: Icon(
+                        added
+                            ? Icons.check_rounded
+                            : Icons.add_rounded,
+                        size: 16,
+                        color: added
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Done button
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                20,
+                8,
+                20,
+                MediaQuery.of(context).padding.bottom + 8),
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: widget.onDone,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                child: Text(
+                  _current.isEmpty
+                      ? 'Done'
+                      : 'Done (${_current.length})',
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Swap Meal Bottom Sheet
 // ─────────────────────────────────────────────────────────────
 
 class _ChangeMealSheet extends ConsumerStatefulWidget {
   final String mealType;
   final MealDetail meal;
-  final MealPlan plan;
   final PatientProfile profile;
 
   const _ChangeMealSheet({
     required this.mealType,
     required this.meal,
-    required this.plan,
     required this.profile,
   });
 
   @override
-  ConsumerState<_ChangeMealSheet> createState() => _ChangeMealSheetState();
+  ConsumerState<_ChangeMealSheet> createState() =>
+      _ChangeMealSheetState();
 }
 
 class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
@@ -962,7 +1500,10 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
     super.dispose();
   }
 
-  String get _label => _kMealLabels[widget.mealType] ?? widget.mealType;
+  String get _label =>
+      _kMealLabels[widget.mealType] ?? widget.mealType;
+  Color get _accent =>
+      _kMealAccent[widget.mealType] ?? _kPrimary;
 
   Future<void> _getAlternatives() async {
     final allergies = [
@@ -981,8 +1522,9 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
     if (mounted) setState(() => _showingAlternatives = true);
   }
 
-  void _acceptAlternative(MealAlternative alt) {
-    ref.read(dietProvider.notifier).acceptAlternative(widget.mealType, alt);
+  void _accept(MealAlternative alt) {
+    ref.read(dietProvider.notifier)
+        .acceptAlternative(widget.mealType, alt);
     Navigator.pop(context);
   }
 
@@ -990,32 +1532,30 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
   Widget build(BuildContext context) {
     final diet = ref.watch(dietProvider);
     return DraggableScrollableSheet(
-      initialChildSize: _showingAlternatives ? 0.85 : 0.55,
+      initialChildSize: _showingAlternatives ? 0.80 : 0.55,
       minChildSize: 0.4,
       maxChildSize: 0.92,
       builder: (_, scrollCtrl) => Container(
         decoration: const BoxDecoration(
-          color: AppColors.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
             Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 4),
-              width: 36,
-              height: 4,
+              margin: const EdgeInsets.only(top: 10, bottom: 2),
+              width: 36, height: 4,
               decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
             Expanded(
               child: SingleChildScrollView(
                 controller: scrollCtrl,
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                 child: _showingAlternatives
-                    ? _buildAlternativesView(diet)
-                    : _buildInputView(diet),
+                    ? _buildAlternatives(diet)
+                    : _buildInput(diet),
               ),
             ),
           ],
@@ -1024,34 +1564,41 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
     );
   }
 
-  Widget _buildInputView(DietState diet) {
+  Widget _buildInput(DietState diet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Change $_label',
-            style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        Text('Current: ${widget.meal.name}',
-            style: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 12)),
-        const SizedBox(height: 20),
-
-        const Text('What would you like instead?',
+        Row(
+          children: [
+            Text(_kMealIcons[widget.mealType] ?? '🍽️',
+                style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Swap $_label',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                Text('Current: ${widget.meal.name}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary)),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const Text('Choose a new $_label option',
             style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600)),
+                fontSize: 13, fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary)),
         const SizedBox(height: 8),
         TextField(
           controller: _prefCtrl,
-          style: const TextStyle(color: AppColors.textPrimary),
-          maxLines: 3,
+          maxLines: 2,
           decoration: InputDecoration(
             hintText:
-                'e.g. "Something lighter", "No fish", "More protein"…',
+                'e.g. "Something lighter", "No fish", "More iron"…',
             hintStyle: const TextStyle(
                 color: AppColors.textHint, fontSize: 12),
             filled: true,
@@ -1069,29 +1616,26 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
               borderSide:
                   const BorderSide(color: AppColors.primary, width: 1.5),
             ),
-            contentPadding: const EdgeInsets.all(14),
+            contentPadding: const EdgeInsets.all(12),
           ),
         ),
-        const SizedBox(height: 20),
-
+        const SizedBox(height: 16),
         SizedBox(
-          width: double.infinity,
-          height: 50,
+          width: double.infinity, height: 48,
           child: ElevatedButton.icon(
             onPressed:
                 diet.isLoadingAlternatives ? null : _getAlternatives,
             icon: diet.isLoadingAlternatives
                 ? const SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 16, height: 16,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2),
-                  )
-                : const Text('✨', style: TextStyle(fontSize: 16)),
+                        color: Colors.white, strokeWidth: 2))
+                : const Text('✨',
+                    style: TextStyle(fontSize: 16)),
             label: Text(
               diet.isLoadingAlternatives
-                  ? 'Getting alternatives…'
-                  : 'Get 5 Alternatives',
+                  ? 'Getting options…'
+                  : 'Get 3 Options',
               style: const TextStyle(
                   fontSize: 14, fontWeight: FontWeight.w700),
             ),
@@ -1103,9 +1647,8 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
             ),
           ),
         ),
-
         if (diet.alternativesError.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(diet.alternativesError,
               style: const TextStyle(color: _kRed, fontSize: 12)),
         ],
@@ -1113,7 +1656,7 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
     );
   }
 
-  Widget _buildAlternativesView(DietState diet) {
+  Widget _buildAlternatives(DietState diet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1126,124 +1669,124 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
               },
               child: const Row(
                 children: [
-                  Icon(Icons.arrow_back_ios,
-                      color: AppColors.textSecondary, size: 14),
-                  SizedBox(width: 4),
+                  Icon(Icons.arrow_back_ios_rounded,
+                      size: 14, color: AppColors.textSecondary),
+                  SizedBox(width: 2),
                   Text('Back',
                       style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 12)),
+                          fontSize: 12,
+                          color: AppColors.textSecondary)),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text('Choose a $_label Alternative',
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700)),
-            ),
+            const SizedBox(width: 10),
+            Text('Swap $_label',
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(width: 6),
+            Text('· Choose a new option',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
-        const SizedBox(height: 16),
-
+        const SizedBox(height: 14),
         if (diet.alternatives.isEmpty)
           const Center(
-            child: Text('No alternatives found.',
-                style: TextStyle(color: AppColors.textSecondary)),
-          )
+              child: Text('No alternatives found.',
+                  style: TextStyle(color: AppColors.textSecondary)))
         else
-          ...diet.alternatives.map(_buildAlternativeCard),
+          ...diet.alternatives.asMap().entries.map((e) {
+            final alt = e.value;
+            final optNum = e.key + 1;
+            final emoji = _kMealIcons[widget.mealType] ?? '🍽️';
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  // Food visual
+                  Container(
+                    width: 52, height: 52,
+                    decoration: BoxDecoration(
+                      color: _accent.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                        child: Text(emoji,
+                            style: const TextStyle(fontSize: 26))),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Option $optNum',
+                            style: TextStyle(
+                                fontSize: 9,
+                                color: _accent,
+                                fontWeight: FontWeight.w700)),
+                        Text(alt.name,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary)),
+                        if (alt.description.isNotEmpty)
+                          Text(alt.description,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary)),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            _miniChip(
+                                '${alt.totalCalories}cal', _kPrimary),
+                            const SizedBox(width: 4),
+                            _miniChip('${alt.totalProteinG.toInt()}g P',
+                                _kGreen),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _accept(alt),
+                    child: Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        color: _kGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
       ],
     );
   }
 
-  Widget _buildAlternativeCard(MealAlternative alt) {
+  Widget _miniChip(String text, Color color) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(alt.name,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _kGreen.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text('${alt.rating}/10',
-                    style: const TextStyle(
-                        color: _kGreen,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-          if (alt.description.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(alt.description,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 11)),
-          ],
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _altChip('${alt.totalCalories}cal', _kPrimary),
-              const SizedBox(width: 4),
-              _altChip('P${alt.totalProteinG.toInt()}g', _kGreen),
-              const SizedBox(width: 4),
-              _altChip('C${alt.totalCarbsG.toInt()}g', _kAmber),
-              const SizedBox(width: 4),
-              _altChip('F${alt.totalFatG.toInt()}g', _kPurple),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: () => _acceptAlternative(alt),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Accept',
-                    style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _altChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withOpacity(0.10),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(text,
           style: TextStyle(
-              color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+              color: color, fontSize: 9, fontWeight: FontWeight.w600)),
     );
   }
 }
