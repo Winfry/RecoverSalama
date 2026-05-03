@@ -1,11 +1,3 @@
-// ─────────────────────────────────────────────────────────────
-// SalamaRecover — Screen 07: Mental Health Check-In
-// Daily emotional wellbeing check. 4 mood cards in a 2x2 grid.
-// AI responds immediately. If "Overwhelmed" → red referral CTA.
-// This is a SAFETY FEATURE — the referral must never be removed.
-// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,401 +17,328 @@ class MentalHealthScreen extends ConsumerStatefulWidget {
 
 class _MentalHealthScreenState extends ConsumerState<MentalHealthScreen> {
   String? _mood;
-  final _notesController = TextEditingController();
+  final _notesCtrl = TextEditingController();
+
+  final Map<String, String> _fallback = {
+    'Okay': 'You\'re doing well 💚 Keep up the positivity — it genuinely supports healing. Try a short walk and enjoy some sunlight today if possible.',
+    'Tired': 'Fatigue is completely normal at this stage. 🌙 Rest as much as you need. Stay hydrated, eat well, and don\'t push yourself.',
+    'Anxious': 'It\'s okay to feel anxious — you\'ve been through a lot. 🌿 Try breathing slowly: in 4 seconds, hold 4, out 6. You are safe.',
+    'Overwhelmed': 'You\'re not alone in feeling this way. 💛 Your feelings are valid. Taking this step is already a sign of strength. Please speak with someone today.',
+  };
+
+  final _moods = [
+    {'emoji': '☀️', 'label': 'Okay', 'sub': "I'm managing", 'color': 0xFF22C55E, 'bg': 0xFFDCFCE7},
+    {'emoji': '😴', 'label': 'Tired', 'sub': 'Very drained', 'color': 0xFFFFB703, 'bg': 0xFFFFF8E1},
+    {'emoji': '😰', 'label': 'Anxious', 'sub': 'Feeling worried', 'color': 0xFFF77F00, 'bg': 0xFFFFF3E0},
+    {'emoji': '🆘', 'label': 'Overwhelmed', 'sub': 'I need support', 'color': 0xFFEF4444, 'bg': 0xFFFEE2E2},
+  ];
 
   @override
   void dispose() {
-    _notesController.dispose();
+    _notesCtrl.dispose();
     super.dispose();
   }
-
-  // Fallback messages used when the API is unavailable
-  final Map<String, String> _fallbackMessages = {
-    'Okay':
-        'That is wonderful! 💚 Keep up the positivity — it genuinely supports '
-            'healing. Try a short walk and enjoy some sunlight today if possible.',
-    'Tired':
-        'Fatigue is completely normal at this stage. 🌙 Rest as much as you need. '
-            'Stay hydrated, eat well, and do not push yourself. Your body is working '
-            'hard to heal.',
-    'Anxious':
-        'It is okay to feel anxious — you have been through a lot. 🌿 Try the '
-            '4-4-4 breathing technique: breathe in 4 seconds, hold 4, out 4. Consider '
-            'talking to someone you trust today.',
-    'Overwhelmed':
-        'You are not alone in feeling this way. 💛 Your feelings are valid. Please '
-            'speak with a mental health professional or trusted person today. You '
-            'deserve support.',
-  };
-
-  // 4 moods — each with color, background, emoji, and description
-  final _moods = [
-    {
-      'emoji': '😊',
-      'label': 'Okay',
-      'color': AppColors.success,
-      'bg': AppColors.successLight,
-      'desc': 'Feeling well and positive',
-    },
-    {
-      'emoji': '😐',
-      'label': 'Tired',
-      'color': AppColors.warning,
-      'bg': AppColors.warningLight,
-      'desc': 'Okay but exhausted',
-    },
-    {
-      'emoji': '😟',
-      'label': 'Anxious',
-      'color': const Color(0xFFF77F00),
-      'bg': const Color(0xFFFFF3E0),
-      'desc': 'Worried about recovery',
-    },
-    {
-      'emoji': '😢',
-      'label': 'Overwhelmed',
-      'color': AppColors.emergency,
-      'bg': const Color(0xFFFFF0F0),
-      'desc': 'Struggling emotionally',
-    },
-  ];
-
 
   @override
   Widget build(BuildContext context) {
     final mhState = ref.watch(mentalHealthProvider);
-    // Use backend message if available; fall back to local message
-    final displayMessage = mhState.supportMessage ??
-        (_mood != null ? _fallbackMessages[_mood] : null);
+    final displayMsg = mhState.supportMessage ??
+        (_mood != null ? _fallback[_mood] : null);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          // ── Purple gradient header ──
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF5C6BC0), Color(0xFF9C27B0)],
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Header ──
+            Container(
+              color: AppColors.surface,
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => context.go(AppRoutes.dashboard),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Mental Health Check-In',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                ],
               ),
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  children: const [
-                    Text('🧠', style: TextStyle(fontSize: 40)),
-                    SizedBox(height: 10),
-                    Text('Mental Health Check-In',
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Heading ──
+                    const Text(
+                      'How are you feeling\nemotionally today?',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          height: 1.25),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text("It's okay to not be okay 💜",
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800)),
-                    SizedBox(height: 6),
-                    Text(
-                        'Your emotional wellbeing matters as much as physical healing.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            height: 1.5)),
+                            fontSize: 14, color: AppColors.textSecondary)),
+                    const SizedBox(height: 24),
+
+                    // ── 2×2 Mood grid ──
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.15,
+                      children: _moods.map((m) {
+                        final selected = _mood == m['label'];
+                        final color = Color(m['color'] as int);
+                        final bg = Color(m['bg'] as int);
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() => _mood = m['label'] as String);
+                            ref
+                                .read(mentalHealthProvider.notifier)
+                                .selectMood(
+                                  m['label'] as String,
+                                  notes: _notesCtrl.text.trim().isEmpty
+                                      ? null
+                                      : _notesCtrl.text.trim(),
+                                );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            decoration: BoxDecoration(
+                              color: selected ? bg : AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: selected ? color : AppColors.border,
+                                width: selected ? 2 : 1,
+                              ),
+                              boxShadow: selected
+                                  ? [
+                                      BoxShadow(
+                                          color: color.withOpacity(0.15),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4))
+                                    ]
+                                  : [],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(m['emoji'] as String,
+                                    style: const TextStyle(fontSize: 36)),
+                                const SizedBox(height: 8),
+                                Text(m['label'] as String,
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: selected
+                                            ? color
+                                            : AppColors.textPrimary)),
+                                const SizedBox(height: 2),
+                                Text(m['sub'] as String,
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+
+                    // ── Notes ──
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _notesCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Anything on your mind? (Optional)\nYou can write in English or Kiswahili',
+                        hintStyle: const TextStyle(
+                            fontSize: 13, color: AppColors.textHint),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                              color: AppColors.primary, width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.all(14),
+                      ),
+                      onEditingComplete: () {
+                        FocusScope.of(context).unfocus();
+                        if (_mood != null) {
+                          ref.read(mentalHealthProvider.notifier).selectMood(
+                                _mood!,
+                                notes: _notesCtrl.text.trim().isEmpty
+                                    ? null
+                                    : _notesCtrl.text.trim(),
+                              );
+                        }
+                      },
+                    ),
+
+                    // ── AI Support card ──
+                    if (_mood != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                              color: AppColors.primary.withOpacity(0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 32, height: 32,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Center(
+                                      child: Text('🤖',
+                                          style: TextStyle(fontSize: 16))),
+                                ),
+                                const SizedBox(width: 10),
+                                const Text('AI Support',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary)),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            if (mhState.isLoading)
+                              const Center(
+                                child: SizedBox(
+                                  width: 20, height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary),
+                                ),
+                              )
+                            else
+                              Text(displayMsg ?? '',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textPrimary,
+                                      height: 1.65)),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // ── SAFETY: Professional referral (Overwhelmed) ──
+                    if (_mood == 'Overwhelmed' ||
+                        (ref.watch(mentalHealthProvider).mentalHealthLevel ==
+                            'needs_support')) ...[
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: () => context.go(AppRoutes.hospital),
+                          icon: const Icon(Icons.phone_rounded, size: 18),
+                          label: const Text('Talk to a Professional'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.emergency,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // ── Befrienders helpline ──
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Row(
+                        children: [
+                          Text('📞', style: TextStyle(fontSize: 20)),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Befrienders Kenya',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
+                                SizedBox(height: 2),
+                                Text('0722 178 177 · Free & confidential',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => context.go(AppRoutes.dashboard),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Done for Today ✓',
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
-          ),
-
-          // ── Content ──
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Text('How are you feeling today?',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary)),
-                  const SizedBox(height: 4),
-                  const Text('Tap what describes you right now',
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.textHint)),
-                  const SizedBox(height: 20),
-
-                  // ── 2x2 Mood grid ──
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.1,
-                    children: _moods.map((m) {
-                      final selected = _mood == m['label'];
-                      return GestureDetector(
-                        onTap: () {
-                          setState(
-                              () => _mood = m['label'] as String);
-                          ref
-                              .read(mentalHealthProvider.notifier)
-                              .selectMood(
-                                m['label'] as String,
-                                notes: _notesController.text.trim().isEmpty
-                                    ? null
-                                    : _notesController.text.trim(),
-                              );
-                        },
-                        child: AnimatedContainer(
-                          duration:
-                              const Duration(milliseconds: 200),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? (m['bg'] as Color)
-                                : AppColors.background,
-                            border: Border.all(
-                              color: selected
-                                  ? (m['color'] as Color)
-                                  : AppColors.border,
-                              width: selected ? 2 : 1,
-                            ),
-                            borderRadius:
-                                BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
-                            children: [
-                              Text(m['emoji'] as String,
-                                  style: const TextStyle(
-                                      fontSize: 36)),
-                              const SizedBox(height: 6),
-                              Text(m['label'] as String,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: selected
-                                        ? (m['color'] as Color)
-                                        : AppColors.textPrimary,
-                                  )),
-                              const SizedBox(height: 3),
-                              Text(m['desc'] as String,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textHint)),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  // ── Tell us more (free-text emotions) ──
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _notesController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText:
-                          'Tell us more about how you feel... (optional)\n'
-                          'You can write in English or Kiswahili',
-                      hintStyle: const TextStyle(
-                          fontSize: 12, color: AppColors.textHint),
-                      filled: true,
-                      fillColor: AppColors.background,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            const BorderSide(color: AppColors.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            const BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF5C6BC0), width: 2),
-                      ),
-                      contentPadding: const EdgeInsets.all(12),
-                    ),
-                    onEditingComplete: () {
-                      // Send to AI when the patient finishes typing
-                      FocusScope.of(context).unfocus();
-                      if (_mood != null) {
-                        ref
-                            .read(mentalHealthProvider.notifier)
-                            .selectMood(
-                              _mood!,
-                              notes: _notesController.text.trim().isEmpty
-                                  ? null
-                                  : _notesController.text.trim(),
-                            );
-                      }
-                    },
-                  ),
-
-                  // ── AI Response card (green) ──
-                  if (_mood != null) ...[
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.successLight,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color:
-                                AppColors.success.withOpacity(0.25)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          const Text('💚 AI Response for You',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: AppColors.textPrimary)),
-                          const SizedBox(height: 8),
-                          if (mhState.isLoading)
-                            const Center(
-                              child: SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.success),
-                              ),
-                            )
-                          else
-                            Text(
-                              displayMessage ?? '',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textPrimary,
-                                  height: 1.7),
-                            ),
-
-                          // SAFETY: Red referral button for "Overwhelmed"
-                          // or when backend flags needs_support
-                          if (_mood == 'Overwhelmed' ||
-                              mhState.mentalHealthLevel ==
-                                  'needs_support') ...[
-                            const SizedBox(height: 12),
-                            SalamaButton(
-                              label: '🤝 Connect to a Professional',
-                              color: AppColors.emergency,
-                              onTap: () =>
-                                  context.go(AppRoutes.hospital),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  // ── Wellbeing tips card (purple) ──
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3E5F5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: const Color(0xFFE1BEE7)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        const Text('✨ Wellbeing Tips for Today',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: Color(0xFF7B1FA2))),
-                        const SizedBox(height: 10),
-                        ...[
-                          'Write 3 things you are grateful for in your recovery',
-                          'Limit social media if it increases anxiety',
-                          'Connect with a friend or family member today',
-                          'Celebrate small wins — every day of healing counts',
-                        ].map((tip) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 4),
-                              child: Row(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  const Text('◆ ',
-                                      style: TextStyle(
-                                          color:
-                                              Color(0xFF9C27B0),
-                                          fontSize: 12)),
-                                  Expanded(
-                                      child: Text(tip,
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors
-                                                  .textPrimary,
-                                              height: 1.5))),
-                                ],
-                              ),
-                            )),
-                      ],
-                    ),
-                  ),
-
-                  // ── Befrienders Kenya helpline ──
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Row(
-                      children: [
-                        Text('📞', style: TextStyle(fontSize: 18)),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Text('Befrienders Kenya',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                              Text(
-                                  '0722 178 177 — Free & confidential',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textHint)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ── Done button ──
-                  const SizedBox(height: 20),
-                  SalamaButton(
-                    label: 'Done for Today ✓',
-                    color: AppColors.success,
-                    onTap: () => context.go(AppRoutes.dashboard),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

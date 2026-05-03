@@ -332,9 +332,9 @@ class _HospitalConnectScreenState
             onTap: (i) {
               final routes = [
                 AppRoutes.dashboard,
+                AppRoutes.diet,
                 AppRoutes.checkIn,
                 AppRoutes.aiChat,
-                AppRoutes.diet,
                 AppRoutes.hospital,
               ];
               if (i < routes.length) context.go(routes[i]);

@@ -1,29 +1,18 @@
-// ─────────────────────────────────────────────────────────────
-// SalamaRecover — Screen 08: Weekly Diet Plan
-// Dark-themed weekly plan with AI-powered meal swaps.
-// Kenya-local food recommendations grounded in MOH 2010 guidelines.
-// Surgery type + recovery day determine the phase; Gemini builds the plan.
-// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/salama_widgets.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../providers/diet_provider.dart';
 
-// ── Theme constants ───────────────────────────────────────────
-const _kBg      = Color(0xFF111827);  // dark navy background
-const _kCard    = Color(0xFF1F2937);  // card surface
-const _kChip    = Color(0xFF374151);  // small macro chip background
-const _kPrimary = Color(0xFF0077B6);  // brand blue
-const _kGreen   = Color(0xFF00B37E);  // brand green
-const _kAmber   = Color(0xFFF59E0B);  // carbs colour
-const _kPurple  = Color(0xFF8B5CF6);  // fat colour
-const _kRed     = Color(0xFFEF4444);  // low-score / error
+const _kPrimary = AppColors.primary;
+const _kGreen   = Color(0xFF22C55E);
+const _kAmber   = Color(0xFFFFB703);
+const _kPurple  = Color(0xFF8B5CF6);
+const _kRed     = Color(0xFFEF4444);
 
 const _kDayNames   = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const _kMealOrder  = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -34,8 +23,6 @@ const _kMealLabels = {
   'breakfast': 'Breakfast', 'lunch': 'Lunch',
   'dinner': 'Dinner', 'snack': 'Snack',
 };
-
-// ─────────────────────────────────────────────────────────────
 
 class DietScreen extends ConsumerStatefulWidget {
   const DietScreen({super.key});
@@ -53,7 +40,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _weekStart    = now.subtract(Duration(days: now.weekday - 1)); // Monday
+    _weekStart    = now.subtract(Duration(days: now.weekday - 1));
     _selectedDate = DateTime(now.year, now.month, now.day);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDate(_selectedDate));
   }
@@ -64,25 +51,17 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     super.dispose();
   }
 
-  // ── Helpers ───────────────────────────────────────────────
-
   void _loadForDate(DateTime date) {
     final profile = ref.read(profileProvider);
     if (profile.surgeryType.isEmpty) return;
-
-    // Surgery type + day-since-surgery are the two critical inputs.
-    // Surgery type → selects the correct diet protocol (15 types supported).
-    // Day since surgery → determines the phase (clear liquid / soft / high protein).
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
     final diff = date.difference(todayDate).inDays;
     final targetDay = (profile.daysSinceSurgery + diff).clamp(0, 730);
-
     final allergies = [
       ...profile.allergies,
       if (profile.otherAllergies.isNotEmpty) profile.otherAllergies,
     ];
-
     ref.read(dietProvider.notifier).loadMealPlan(
           surgeryType: profile.surgeryType,
           daysSinceSurgery: targetDay,
@@ -110,26 +89,24 @@ class _DietScreenState extends ConsumerState<DietScreen> {
         '${_monthAbbr(end.month)} ${end.day}';
   }
 
-  // ── Build ─────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final diet    = ref.watch(dietProvider);
     final profile = ref.watch(profileProvider);
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
           _buildHeader(diet),
           _buildDaySelector(),
           Expanded(child: _buildBody(diet, profile)),
           SalamaBottomNav(
-            currentIndex: 3,
+            currentIndex: 1,
             onTap: (i) {
               final routes = [
-                AppRoutes.dashboard, AppRoutes.checkIn,
-                AppRoutes.aiChat,    AppRoutes.diet,
+                AppRoutes.dashboard, AppRoutes.diet,
+                AppRoutes.checkIn,   AppRoutes.aiChat,
                 AppRoutes.hospital,
               ];
               if (i < routes.length) context.go(routes[i]);
@@ -148,13 +125,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
         : diet.phaseLabel;
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0077B6), Color(0xFF005f8e)],
-        ),
-      ),
+      color: AppColors.surface,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -166,31 +137,33 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Weekly Diet Plan',
+                      "Let's plan today's meals 🥗",
                       style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _dateRangeLabel(),
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12),
                     ),
                   ],
                 ),
               ),
               if (phaseLabel.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     phaseLabel,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.primary,
                         fontSize: 10,
                         fontWeight: FontWeight.w600),
                   ),
@@ -206,11 +179,11 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
   Widget _buildDaySelector() {
     return Container(
-      color: const Color(0xFF1A2333),
-      height: 70,
+      color: AppColors.surface,
+      height: 72,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
         itemCount: 7,
         itemBuilder: (_, i) {
           final date     = _weekStart.add(Duration(days: i));
@@ -229,8 +202,11 @@ class _DietScreenState extends ConsumerState<DietScreen> {
         width: 46,
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
-          color: selected ? _kPrimary : const Color(0xFF2A3347),
+          color: selected ? _kPrimary : AppColors.background,
           borderRadius: BorderRadius.circular(12),
+          border: selected
+              ? null
+              : Border.all(color: AppColors.border),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -238,7 +214,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
             Text(
               _kDayNames[weekdayIndex],
               style: TextStyle(
-                color: selected ? Colors.white : Colors.white54,
+                color: selected ? Colors.white : AppColors.textSecondary,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
               ),
@@ -247,7 +223,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
             Text(
               '${date.day}',
               style: TextStyle(
-                color: Colors.white,
+                color: selected ? Colors.white : AppColors.textPrimary,
                 fontSize: 16,
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
               ),
@@ -270,7 +246,8 @@ class _DietScreenState extends ConsumerState<DietScreen> {
             CircularProgressIndicator(color: _kPrimary),
             SizedBox(height: 16),
             Text('Building your AI meal plan…',
-                style: TextStyle(color: Colors.white54, fontSize: 13)),
+                style: TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13)),
           ],
         ),
       );
@@ -279,7 +256,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     if (diet.mealPlan == null) {
       return const Center(
         child: Text('No meal plan loaded.',
-            style: TextStyle(color: Colors.white54)),
+            style: TextStyle(color: AppColors.textSecondary)),
       );
     }
     return _buildPlanContent(diet, profile);
@@ -296,14 +273,15 @@ class _DietScreenState extends ConsumerState<DietScreen> {
             const SizedBox(height: 16),
             const Text('Complete your profile first',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
               'Your diet plan is personalised by surgery type and recovery day.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 13),
+              style: TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 24),
             SalamaButton(
@@ -327,7 +305,8 @@ class _DietScreenState extends ConsumerState<DietScreen> {
             const SizedBox(height: 12),
             Text(diet.errorMessage,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white60, fontSize: 13)),
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: 20),
             SalamaButton(
               label: 'Try Again',
@@ -351,25 +330,20 @@ class _DietScreenState extends ConsumerState<DietScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Recovery context info strip
           _buildContextStrip(profile, diet),
           const SizedBox(height: 12),
 
-          // Pantry input — what the patient has at home today
           _buildPantrySection(diet, profile),
           const SizedBox(height: 14),
 
-          // Daily macro targets
           _buildMacroCard(plan),
           const SizedBox(height: 14),
 
-          // AI tip (from Gemini, specific to surgery+phase)
           if (diet.aiTip.isNotEmpty) ...[
             _buildAiTip(diet.aiTip),
             const SizedBox(height: 14),
           ],
 
-          // Meal cards — one per meal type in order
           for (final mealType in _kMealOrder)
             if (plan.meals.containsKey(mealType)) ...[
               _buildMealCard(
@@ -381,24 +355,23 @@ class _DietScreenState extends ConsumerState<DietScreen> {
               const SizedBox(height: 12),
             ],
 
-          // Foods to avoid — from Kenya MOH rules (legacy section, retained)
           if (diet.avoidList.isNotEmpty) ...[
             _buildAvoidSection(diet.avoidList),
             const SizedBox(height: 12),
           ],
 
-          // Source citation
           const Padding(
             padding: EdgeInsets.only(top: 4, bottom: 8),
             child: Row(
               children: [
                 Icon(Icons.menu_book_outlined,
-                    size: 11, color: Colors.white24),
+                    size: 11, color: AppColors.textHint),
                 SizedBox(width: 5),
                 Expanded(
                   child: Text(
                     'Kenya National Clinical Nutrition Manual (MOH 2010)',
-                    style: TextStyle(color: Colors.white24, fontSize: 10),
+                    style: TextStyle(
+                        color: AppColors.textHint, fontSize: 10),
                   ),
                 ),
               ],
@@ -409,13 +382,13 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
-  // ── Pantry — what the patient has at home ────────────────
+  // ── Pantry ────────────────────────────────────────────────
 
   Widget _buildPantrySection(DietState diet, PatientProfile profile) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kCard,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kGreen.withOpacity(0.25)),
       ),
@@ -429,7 +402,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
               Text(
                 "What's in your kitchen today?",
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w700),
               ),
@@ -437,30 +410,42 @@ class _DietScreenState extends ConsumerState<DietScreen> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Add foods you have and we\'ll build meals around them.',
-            style: TextStyle(color: Colors.white38, fontSize: 11),
+            "Add foods you have and we'll build meals around them.",
+            style: TextStyle(
+                color: AppColors.textSecondary, fontSize: 11),
           ),
           const SizedBox(height: 12),
 
-          // Input row
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _pantryCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(
+                      color: AppColors.textPrimary, fontSize: 13),
                   textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                     hintText: 'e.g. Eggs, Ugali, Sukuma wiki…',
-                    hintStyle:
-                        const TextStyle(color: Colors.white24, fontSize: 12),
+                    hintStyle: const TextStyle(
+                        color: AppColors.textHint, fontSize: 12),
                     filled: true,
-                    fillColor: const Color(0xFF2A3347),
+                    fillColor: AppColors.background,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
+                      borderSide:
+                          const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide:
+                          const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                          color: AppColors.primary, width: 1.5),
                     ),
                   ),
                   onSubmitted: _addPantryItem,
@@ -476,19 +461,16 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                     color: _kGreen,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text(
-                    '+ Add',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700),
-                  ),
+                  child: const Text('+ Add',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
           ),
 
-          // Pantry chips
           if (diet.pantryItems.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
@@ -499,12 +481,12 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                   .toList(),
             ),
             const SizedBox(height: 14),
-
-            // Generate button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: diet.isLoading ? null : () => _loadForDate(_selectedDate),
+                onPressed: diet.isLoading
+                    ? null
+                    : () => _loadForDate(_selectedDate),
                 icon: diet.isLoading
                     ? const SizedBox(
                         width: 14,
@@ -512,7 +494,8 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2),
                       )
-                    : const Text('✨', style: TextStyle(fontSize: 14)),
+                    : const Text('✨',
+                        style: TextStyle(fontSize: 14)),
                 label: Text(
                   diet.isLoading
                       ? 'Generating…'
@@ -546,18 +529,18 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: _kGreen.withOpacity(0.12),
+        color: _kGreen.withOpacity(0.10),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _kGreen.withOpacity(0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            item,
-            style: const TextStyle(
-                color: _kGreen, fontSize: 12, fontWeight: FontWeight.w600),
-          ),
+          Text(item,
+              style: const TextStyle(
+                  color: _kGreen,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(width: 6),
           GestureDetector(
             onTap: () =>
@@ -569,7 +552,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
-  // ── Context strip (surgery + day) ─────────────────────────
+  // ── Context strip ─────────────────────────────────────────
 
   Widget _buildContextStrip(PatientProfile profile, DietState diet) {
     final today = DateTime.now();
@@ -579,19 +562,11 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
     return Row(
       children: [
-        _contextChip(
-          Icons.medical_services_outlined,
-          profile.surgeryType.isNotEmpty
-              ? profile.surgeryType
-              : 'Surgery type',
-          _kPrimary,
-        ),
+        _contextChip(Icons.medical_services_outlined,
+            profile.surgeryType.isNotEmpty ? profile.surgeryType : 'Surgery type',
+            _kPrimary),
         const SizedBox(width: 8),
-        _contextChip(
-          Icons.today_outlined,
-          'Day $displayDay of recovery',
-          _kGreen,
-        ),
+        _contextChip(Icons.today_outlined, 'Day $displayDay of recovery', _kGreen),
       ],
     );
   }
@@ -600,7 +575,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withOpacity(0.10),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -611,40 +586,39 @@ class _DietScreenState extends ConsumerState<DietScreen> {
           const SizedBox(width: 5),
           Text(label,
               style: TextStyle(
-                  color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
 
-  // ── Macro summary card ────────────────────────────────────
+  // ── Macro card ────────────────────────────────────────────
 
   Widget _buildMacroCard(MealPlan plan) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kCard,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Daily Targets',
               style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 14),
           Row(
             children: [
               _macroStat('🔥', '${plan.targetKcal}', 'kcal', _kPrimary),
-              _macroStat(
-                  '💪', '${plan.targetProteinG.toInt()}g', 'Protein', _kGreen),
-              _macroStat(
-                  '🌾', '${plan.targetCarbsG.toInt()}g', 'Carbs', _kAmber),
-              _macroStat(
-                  '🥑', '${plan.targetFatG.toInt()}g', 'Fat', _kPurple),
+              _macroStat('💪', '${plan.targetProteinG.toInt()}g', 'Protein', _kGreen),
+              _macroStat('🌾', '${plan.targetCarbsG.toInt()}g', 'Carbs', _kAmber),
+              _macroStat('🥑', '${plan.targetFatG.toInt()}g', 'Fat', _kPurple),
             ],
           ),
         ],
@@ -660,23 +634,26 @@ class _DietScreenState extends ConsumerState<DietScreen> {
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
-                  color: color, fontSize: 14, fontWeight: FontWeight.w800)),
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800)),
           Text(label,
-              style: const TextStyle(color: Colors.white38, fontSize: 9)),
+              style: const TextStyle(
+                  color: AppColors.textHint, fontSize: 9)),
         ],
       ),
     );
   }
 
-  // ── AI Tip banner ─────────────────────────────────────────
+  // ── AI tip ────────────────────────────────────────────────
 
   Widget _buildAiTip(String tip) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: _kGreen.withOpacity(0.10),
+        color: _kGreen.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kGreen.withOpacity(0.25)),
+        border: Border.all(color: _kGreen.withOpacity(0.22)),
       ),
       child: Row(
         children: [
@@ -684,14 +661,17 @@ class _DietScreenState extends ConsumerState<DietScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(tip,
-                style: const TextStyle(color: _kGreen, fontSize: 12)),
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    height: 1.5)),
           ),
         ],
       ),
     );
   }
 
-  // ── Meal card ──────────────────────────────────────────────
+  // ── Meal card ─────────────────────────────────────────────
 
   Widget _buildMealCard({
     required String mealType,
@@ -705,21 +685,26 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kCard,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── header row ──
           Row(
             children: [
               Text(icon, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
               Text(label.toUpperCase(),
                   style: const TextStyle(
-                      color: Colors.white54,
+                      color: AppColors.textSecondary,
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1)),
@@ -729,35 +714,33 @@ class _DietScreenState extends ConsumerState<DietScreen> {
           ),
           const SizedBox(height: 10),
 
-          // ── meal name + description ──
           Text(meal.name,
               style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w700)),
           if (meal.description.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(meal.description,
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 12)),
           ],
 
           const SizedBox(height: 12),
-          Divider(color: Colors.white.withOpacity(0.08), height: 1),
+          const Divider(color: AppColors.divider, height: 1),
           const SizedBox(height: 10),
 
-          // ── food items with per-item macros ──
           ...meal.items.map(_buildItemRow),
 
           const SizedBox(height: 10),
-          Divider(color: Colors.white.withOpacity(0.08), height: 1),
+          const Divider(color: AppColors.divider, height: 1),
           const SizedBox(height: 10),
 
-          // ── meal totals ──
           Row(
             children: [
               const Text('Total',
                   style: TextStyle(
-                      color: Colors.white54,
+                      color: AppColors.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.w600)),
               const Spacer(),
@@ -773,7 +756,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
           const SizedBox(height: 14),
 
-          // ── change meal button ──
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -787,8 +769,8 @@ class _DietScreenState extends ConsumerState<DietScreen> {
               icon: const Icon(Icons.swap_horiz_rounded, size: 16),
               label: const Text('Change Meal'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white70,
-                side: const BorderSide(color: Colors.white24),
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.border),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -806,11 +788,13 @@ class _DietScreenState extends ConsumerState<DietScreen> {
       child: Row(
         children: [
           const Text('•',
-              style: TextStyle(color: Colors.white38, fontSize: 12)),
+              style: TextStyle(
+                  color: AppColors.textHint, fontSize: 12)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(item.name,
-                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 12)),
           ),
           _tinyChip('${item.calories}cal'),
           const SizedBox(width: 3),
@@ -824,17 +808,14 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
-  // ── Shared widget helpers ──────────────────────────────────
-
   Widget _scoreBadge(int score) {
-    final color =
-        score >= 8 ? _kGreen : score >= 5 ? _kAmber : _kRed;
+    final color = score >= 8 ? _kGreen : score >= 5 ? _kAmber : _kRed;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text('$score/10',
           style: TextStyle(
@@ -846,7 +827,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text('$value $label',
@@ -859,49 +840,48 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: _kChip,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(text,
-          style: const TextStyle(color: Colors.white54, fontSize: 9)),
+          style: const TextStyle(
+              color: AppColors.textSecondary, fontSize: 9)),
     );
   }
 
-  // ── Foods to Avoid section (from MOH rules) ──────────────
+  // ── Avoid section ─────────────────────────────────────────
 
   Widget _buildAvoidSection(List<String> avoidList) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kCard,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kRed.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _kRed.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('🚫', style: TextStyle(fontSize: 11)),
-                    SizedBox(width: 4),
-                    Text('Avoid During Recovery',
-                        style: TextStyle(
-                            color: _kRed,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700)),
-                  ],
-                ),
-              ),
-            ],
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: _kRed.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('🚫', style: TextStyle(fontSize: 11)),
+                SizedBox(width: 4),
+                Text('Avoid During Recovery',
+                    style: TextStyle(
+                        color: _kRed,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           ...avoidList.map(
@@ -916,7 +896,8 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                   Expanded(
                     child: Text(item,
                         style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
+                            color: AppColors.textSecondary,
+                            fontSize: 12)),
                   ),
                 ],
               ),
@@ -927,7 +908,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
-  // ── Change meal sheet launcher ────────────────────────────
+  // ── Change meal sheet ─────────────────────────────────────
 
   void _showChangeMealSheet({
     required BuildContext context,
@@ -952,7 +933,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
 // ─────────────────────────────────────────────────────────────
 // Change Meal Bottom Sheet
-// Two-stage: (1) preference input → (2) 5 AI alternatives
 // ─────────────────────────────────────────────────────────────
 
 class _ChangeMealSheet extends ConsumerStatefulWidget {
@@ -1015,18 +995,17 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
       maxChildSize: 0.92,
       builder: (_, scrollCtrl) => Container(
         decoration: const BoxDecoration(
-          color: _kCard,
+          color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
-            // drag handle
             Container(
               margin: const EdgeInsets.only(top: 10, bottom: 4),
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1045,40 +1024,50 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
     );
   }
 
-  // ── Stage 1: preference input ─────────────────────────────
-
   Widget _buildInputView(DietState diet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Change $_label',
             style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
         Text('Current: ${widget.meal.name}',
-            style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            style: const TextStyle(
+                color: AppColors.textSecondary, fontSize: 12)),
         const SizedBox(height: 20),
 
         const Text('What would you like instead?',
             style: TextStyle(
-                color: Colors.white70,
+                color: AppColors.textPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
           controller: _prefCtrl,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppColors.textPrimary),
           maxLines: 3,
           decoration: InputDecoration(
-            hintText: 'e.g. "Something lighter", "No fish", "More protein"…',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+            hintText:
+                'e.g. "Something lighter", "No fish", "More protein"…',
+            hintStyle: const TextStyle(
+                color: AppColors.textHint, fontSize: 12),
             filled: true,
-            fillColor: const Color(0xFF2A3347),
+            fillColor: AppColors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  const BorderSide(color: AppColors.primary, width: 1.5),
             ),
             contentPadding: const EdgeInsets.all(14),
           ),
@@ -1089,10 +1078,12 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
           width: double.infinity,
           height: 50,
           child: ElevatedButton.icon(
-            onPressed: diet.isLoadingAlternatives ? null : _getAlternatives,
+            onPressed:
+                diet.isLoadingAlternatives ? null : _getAlternatives,
             icon: diet.isLoadingAlternatives
                 ? const SizedBox(
-                    width: 16, height: 16,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                         color: Colors.white, strokeWidth: 2),
                   )
@@ -1105,7 +1096,7 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
                   fontSize: 14, fontWeight: FontWeight.w700),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _kPrimary,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
@@ -1122,8 +1113,6 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
     );
   }
 
-  // ── Stage 2: 5 alternatives ───────────────────────────────
-
   Widget _buildAlternativesView(DietState diet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1137,10 +1126,12 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
               },
               child: const Row(
                 children: [
-                  Icon(Icons.arrow_back_ios, color: Colors.white54, size: 14),
+                  Icon(Icons.arrow_back_ios,
+                      color: AppColors.textSecondary, size: 14),
                   SizedBox(width: 4),
                   Text('Back',
-                      style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12)),
                 ],
               ),
             ),
@@ -1148,7 +1139,7 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
             Expanded(
               child: Text('Choose a $_label Alternative',
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w700)),
             ),
@@ -1159,7 +1150,7 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
         if (diet.alternatives.isEmpty)
           const Center(
             child: Text('No alternatives found.',
-                style: TextStyle(color: Colors.white54)),
+                style: TextStyle(color: AppColors.textSecondary)),
           )
         else
           ...diet.alternatives.map(_buildAlternativeCard),
@@ -1172,9 +1163,9 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A3347),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1184,14 +1175,15 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
               Expanded(
                 child: Text(alt.name,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w700)),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _kGreen.withOpacity(0.16),
+                  color: _kGreen.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text('${alt.rating}/10',
@@ -1205,7 +1197,8 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
           if (alt.description.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(alt.description,
-                style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 11)),
           ],
           const SizedBox(height: 10),
           Row(
@@ -1245,7 +1238,7 @@ class _ChangeMealSheetState extends ConsumerState<_ChangeMealSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(text,

@@ -116,10 +116,10 @@ class SalamaBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       {"icon": "🏠", "label": "Home"},
-      {"icon": "📋", "label": "Plan"},
-      {"icon": "🤖", "label": "AI"},
       {"icon": "🥗", "label": "Diet"},
-      {"icon": "🏥", "label": "Doctor"},
+      {"icon": "📋", "label": "Check-in"},
+      {"icon": "🤖", "label": "Chat"},
+      {"icon": "🏥", "label": "Hospital"},
     ];
 
     return Container(
