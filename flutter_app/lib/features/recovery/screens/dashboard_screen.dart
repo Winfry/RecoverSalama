@@ -1,11 +1,3 @@
-// ─────────────────────────────────────────────────────────────
-// SalamaRecover — Screen 05: Recovery Dashboard
-// The main home screen patients see every morning. Shows what
-// to do today — progress, stage, activities, diet, AI tip.
-// Emergency banner sits at top if risk is HIGH/EMERGENCY.
-// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,13 +16,13 @@ class DashboardScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider);
     final recovery = ref.watch(recoveryProvider);
     final day = profile.daysSinceSurgery;
-    final progressPercent = (day / 42 * 100).clamp(0, 100).toInt();
+    final totalDays = _totalDays(profile.surgeryType);
+    final progress = (day / totalDays.clamp(1, 999) * 100).clamp(0, 100).toInt();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Emergency banner — first element, always visible ──
           if (recovery.hasWarning)
             EmergencyBanner(
               message: recovery.warningMessage.isNotEmpty
@@ -39,48 +31,78 @@ class DashboardScreen extends ConsumerWidget {
               onCall: () => context.go(AppRoutes.hospital),
             ),
 
-          // ── Blue header with amber progress bar ──
+          // ── Header ──
           Container(
-            color: AppColors.primary,
+            color: AppColors.surface,
             child: SafeArea(
-              top: !recovery.hasWarning, // If banner above, SafeArea already handled
+              top: !recovery.hasWarning,
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Day $day of Recovery',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
-                    const Text('Your Recovery Dashboard',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hi ${profile.name.split(' ').first.isNotEmpty ? profile.name.split(' ').first : 'there'}! 🌟',
+                                style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Day $day of your recovery 💕',
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Notification bell
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.notifications_outlined,
+                              color: AppColors.textSecondary, size: 22),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
 
-                    // Progress bar — amber fill (warm, healing feel)
+                    // Progress bar
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Overall Progress',
-                            style: TextStyle(
-                                color: Colors.white70, fontSize: 12)),
-                        Text('$progressPercent%',
+                        Text('$progress% Completed',
                             style: const TextStyle(
-                                color: Colors.white70, fontSize: 12)),
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13)),
+                        Text('$day of $totalDays days',
+                            style: const TextStyle(
+                                color: AppColors.textHint, fontSize: 12)),
                       ],
                     ),
                     const SizedBox(height: 6),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
-                        value: progressPercent / 100,
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        value: progress / 100,
+                        backgroundColor: AppColors.border,
                         valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.warning),
-                        minHeight: 10,
+                            AppColors.primary),
+                        minHeight: 8,
                       ),
                     ),
                   ],
@@ -89,200 +111,46 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Dashboard content cards ──
+          // ── Content ──
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Recovery Stage card (green) ──
-                  _sectionCard(
-                    bg: AppColors.successLight,
-                    border: AppColors.success.withOpacity(0.25),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.success,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                  _getStageBadge(day),
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13)),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(_getStageName(day),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _getStageDescription(day),
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF444444),
-                              height: 1.6),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Stage card
+                  _StageCard(day: day),
                   const SizedBox(height: 12),
 
-                  // ── Activities card (allowed + restricted) ──
-                  _sectionCard(
-                    bg: Colors.white,
-                    border: AppColors.border,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('✅ Allowed Today',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14)),
-                        const SizedBox(height: 8),
-                        ..._getAllowedActivities(day)
-                            .map((a) => _activityRow(a, allowed: true)),
-                        const SizedBox(height: 12),
-                        const Text('🚫 Restricted',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14)),
-                        const SizedBox(height: 8),
-                        ..._getRestrictedActivities(day)
-                            .map((a) => _activityRow(a, allowed: false)),
-                      ],
-                    ),
-                  ),
+                  // Activities — two columns
+                  _ActivitiesCard(day: day),
                   const SizedBox(height: 12),
 
-                  // ── Diet preview card (amber) ──
-                  _sectionCard(
-                    bg: AppColors.warningLight,
-                    border: AppColors.warning.withOpacity(0.3),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('🥗 Today\'s Diet & Hydration',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14)),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _getDietChips(day)
-                              .map((f) => Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius:
-                                          BorderRadius.circular(20),
-                                      border: Border.all(
-                                          color: AppColors.warning
-                                              .withOpacity(0.5)),
-                                    ),
-                                    child: Text(f,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600)),
-                                  ))
-                              .toList(),
-                        ),
-                        const SizedBox(height: 10),
-                        GestureDetector(
-                          onTap: () => context.go(AppRoutes.diet),
-                          child: const Text('View Full Diet Plan →',
-                              style: TextStyle(
-                                  color: AppColors.warning,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Today's meals
+                  _MealsPreview(day: day, onTap: () => context.go(AppRoutes.diet)),
                   const SizedBox(height: 12),
 
-                  // ── AI Tip card (light blue) ──
-                  _sectionCard(
-                    bg: AppColors.primaryLight,
-                    border: const Color(0xFFCCE5FF),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('🤖', style: TextStyle(fontSize: 28)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              const Text('AI Tip of the Day',
-                                  style: TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13)),
-                              const SizedBox(height: 4),
-                              Text(
-                                recovery.aiTip.isNotEmpty
-                                    ? recovery.aiTip
-                                    : _defaultTip(day),
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textPrimary,
-                                    height: 1.6),
-                              ),
-                              const SizedBox(height: 10),
-                              GestureDetector(
-                                onTap: () =>
-                                    context.go(AppRoutes.aiChat),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius:
-                                        BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                      'Ask AI Assistant →',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  // AI tip
+                  _AiTipCard(
+                    tip: recovery.aiTip.isNotEmpty
+                        ? recovery.aiTip
+                        : _defaultTip(day),
+                    onChat: () => context.go(AppRoutes.aiChat),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
           ),
 
-          // ── Bottom nav — active on Home (index 0) ──
           SalamaBottomNav(
             currentIndex: 0,
             onTap: (i) {
               final routes = [
                 AppRoutes.dashboard,
+                AppRoutes.diet,
                 AppRoutes.checkIn,
                 AppRoutes.aiChat,
-                AppRoutes.diet,
                 AppRoutes.hospital,
               ];
               if (i < routes.length) context.go(routes[i]);
@@ -293,184 +161,341 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ── Reusable section card ──
-  Widget _sectionCard(
-      {required Widget child,
-      required Color bg,
-      required Color border}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
-      ),
-      child: child,
-    );
+  int _totalDays(String surgeryType) {
+    const map = {
+      'Caesarean Section': 42, 'Appendectomy': 21,
+      'Hernia Repair': 21, 'Cholecystectomy': 28,
+      'Knee Replacement': 90, 'Hip Replacement': 90,
+      'Laparotomy': 42, 'Hysterectomy': 42,
+      'Open Fracture Repair': 84, 'Cardiac Surgery': 180,
+    };
+    return map[surgeryType] ?? 42;
   }
 
-  // ── Activity row — green check or red cross ──
-  Widget _activityRow(String text, {required bool allowed}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+  String _defaultTip(int day) {
+    if (day <= 2) return 'Rest is the best medicine right now. Sip water regularly and take your prescribed pain medication on schedule.';
+    if (day <= 7) return 'Short 5-minute walks improve blood flow and speed healing. Avoid lifting anything heavier than a phone.';
+    if (day <= 14) return 'Your wound is closing well. Keep it clean and dry. Eat protein-rich foods like eggs and beans.';
+    if (day <= 30) return 'Strength returns slowly — don\'t rush it. Eat balanced meals and stay well hydrated.';
+    return 'You are in the final stretch of recovery. Resume activities gradually and celebrate your progress!';
+  }
+}
+
+class _StageCard extends StatelessWidget {
+  final int day;
+  const _StageCard({required this.day});
+
+  @override
+  Widget build(BuildContext context) {
+    final stage = _stage(day);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+      ),
       child: Row(
         children: [
-          Text(allowed ? '✓' : '✕',
-              style: TextStyle(
-                color: allowed ? AppColors.success : AppColors.emergency,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              )),
-          const SizedBox(width: 10),
           Expanded(
-              child: Text(text,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textPrimary))),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(stage['badge']!,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5)),
+                ),
+                const SizedBox(height: 8),
+                Text(stage['name']!,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                Text(stage['desc']!,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.5)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text('🌿', style: TextStyle(fontSize: 36)),
         ],
       ),
     );
   }
 
-  // ── Stage info based on recovery day ──
-  String _getStageBadge(int day) {
-    if (day <= 2) return 'Stage 1';
-    if (day <= 7) return 'Stage 2';
-    if (day <= 14) return 'Stage 3';
-    if (day <= 30) return 'Stage 4';
-    return 'Stage 5';
+  Map<String, String> _stage(int day) {
+    if (day <= 2) return {'badge': 'STAGE 1', 'name': 'Immediate Post-Op', 'desc': 'Rest is critical. Clear liquids only.\nPain management is the priority.'};
+    if (day <= 7) return {'badge': 'STAGE 2', 'name': 'Early Healing Stage', 'desc': 'Take it slow today — rest and light\nmovement will help your body heal.'};
+    if (day <= 14) return {'badge': 'STAGE 3', 'name': 'Active Recovery', 'desc': 'Pain is decreasing. Gradually increase\nactivity and normal diet.'};
+    if (day <= 30) return {'badge': 'STAGE 4', 'name': 'Strengthening', 'desc': 'Near-normal activity levels.\nContinue healthy eating.'};
+    return {'badge': 'STAGE 5', 'name': 'Full Recovery', 'desc': 'Resume normal activities gradually.\nSchedule your final follow-up.'};
+  }
+}
+
+class _ActivitiesCard extends StatelessWidget {
+  final int day;
+  const _ActivitiesCard({required this.day});
+
+  @override
+  Widget build(BuildContext context) {
+    final allowed = _allowed(day);
+    final restricted = _restricted(day);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('What you can do today',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 8),
+                ...allowed.map((a) => _row(a, true)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(width: 1, color: AppColors.border),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Text('Try to avoid', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    SizedBox(width: 4),
+                    _Badge(count: 3),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...restricted.map((r) => _row(r, false)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _getStageName(int day) {
-    if (day <= 2) return 'Immediate Post-Op';
-    if (day <= 7) return 'Early Healing';
-    if (day <= 14) return 'Active Recovery';
-    if (day <= 30) return 'Strengthening';
-    return 'Full Recovery';
+  Widget _row(String text, bool ok) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              ok ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              size: 14,
+              color: ok ? AppColors.primary : AppColors.emergency,
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(text,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
+            ),
+          ],
+        ),
+      );
+
+  List<String> _allowed(int day) {
+    if (day <= 2) return ['Bed rest', 'Deep breathing', 'Sipping water'];
+    if (day <= 7) return ['Light walking', 'Sitting upright', 'Drinking fluids'];
+    if (day <= 14) return ['Walks 15 min', 'Light housework', 'Gentle stretching'];
+    return ['Moderate exercise', 'Daily activities', 'Driving (if well)'];
   }
 
-  String _getStageDescription(int day) {
-    if (day <= 2) {
-      return 'Rest is critical. Your body is recovering from anaesthesia. '
-          'Clear liquids only. Pain management is the priority.';
-    }
-    if (day <= 7) {
-      return 'Your body is rebuilding tissue. Light movement helps blood flow. '
-          'Avoid strenuous activity. Watch for infection signs.';
-    }
-    if (day <= 14) {
-      return 'You are actively healing. Gradually increase activity. '
-          'Normal diet returning. Pain should be decreasing.';
-    }
-    if (day <= 30) {
-      return 'Strength is returning. Near-normal activity levels. '
-          'Continue healthy eating. Follow-up appointment recommended.';
-    }
-    return 'Recovery is nearly complete. Resume normal activities gradually. '
-        'Monitor for any late complications.';
+  List<String> _restricted(int day) {
+    if (day <= 7) return ['Heavy lifting', 'Running', 'Bending'];
+    if (day <= 14) return ['Lifting >5 kg', 'Strenuous exercise', 'Swimming'];
+    if (day <= 30) return ['Heavy lifting', 'High-impact sports'];
+    return ['Extreme sports'];
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final int count;
+  const _Badge({required this.count});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: AppColors.emergency.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text('$count',
+          style: const TextStyle(
+              color: AppColors.emergency,
+              fontSize: 10,
+              fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+class _MealsPreview extends StatelessWidget {
+  final int day;
+  final VoidCallback onTap;
+  const _MealsPreview({required this.day, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _chips(day);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Today\'s meals',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              GestureDetector(
+                onTap: onTap,
+                child: const Text('See full plan',
+                    style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: items
+                  .map((item) => Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(item['icon']!,
+                                style: const TextStyle(fontSize: 16)),
+                            const SizedBox(width: 6),
+                            Text(item['name']!,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary)),
+                          ],
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  // ── Allowed activities based on recovery day ──
-  List<String> _getAllowedActivities(int day) {
-    if (day <= 2) {
-      return ['Bed rest', 'Deep breathing exercises', 'Sipping water'];
-    }
-    if (day <= 7) {
-      return [
-        'Short walks (5–10 min)',
-        'Gentle stretching',
-        'Deep breathing exercises',
-        'Reading or light activities',
-      ];
-    }
-    if (day <= 14) {
-      return [
-        'Walks (15–20 min)',
-        'Light housework',
-        'Gentle exercises',
-        'Returning to light work',
-      ];
-    }
-    return [
-      'Moderate exercise',
-      'Most daily activities',
-      'Driving (if pain-free)',
-      'Gradual return to work',
-    ];
+  List<Map<String, String>> _chips(int day) {
+    if (day <= 2) return [{'icon': '☕', 'name': 'Tea'}, {'icon': '🍲', 'name': 'Broth'}, {'icon': '💧', 'name': 'Water'}];
+    if (day <= 4) return [{'icon': '🥣', 'name': 'Uji'}, {'icon': '🥛', 'name': 'Maziwa'}, {'icon': '💧', 'name': 'Water'}];
+    return [{'icon': '🫓', 'name': 'Ugali'}, {'icon': '🌿', 'name': 'Sukuma Wiki'}, {'icon': '💧', 'name': 'Water 2.5L'}];
   }
+}
 
-  // ── Restricted activities based on recovery day ──
-  List<String> _getRestrictedActivities(int day) {
-    if (day <= 7) {
-      return [
-        'Lifting above 2kg',
-        'Driving',
-        'Intense exercise',
-        'Swimming or bathing (shower only)',
-      ];
-    }
-    if (day <= 14) {
-      return [
-        'Lifting above 5kg',
-        'Strenuous exercise',
-        'Swimming',
-      ];
-    }
-    if (day <= 30) {
-      return [
-        'Heavy lifting (above 10kg)',
-        'High-impact exercise',
-      ];
-    }
-    return ['Consult doctor before contact sports'];
-  }
+class _AiTipCard extends StatelessWidget {
+  final String tip;
+  final VoidCallback onChat;
+  const _AiTipCard({required this.tip, required this.onChat});
 
-  // ── Diet preview chips based on recovery day ──
-  List<String> _getDietChips(int day) {
-    if (day <= 2) {
-      return ['🫖 Tea', '🥣 Broth', '💧 Water', '🧃 Juice'];
-    }
-    if (day <= 4) {
-      return ['🥣 Uji', '🥛 Maziwa', '🫙 Mtindi', '🍲 Supu'];
-    }
-    if (day <= 7) {
-      return [
-        '🥚 Mayai',
-        '🍌 Ndizi',
-        '🫓 Ugali laini',
-        '🥭 Papai',
-        '💧 2L Water',
-      ];
-    }
-    return [
-      '🥚 Eggs',
-      '🫘 Beans',
-      '🌿 Sukuma',
-      '🍌 Banana',
-      '🫙 Soup',
-      '💧 2.5L Water',
-    ];
-  }
-
-  // ── Default tip shown before first check-in is submitted ──
-  String _defaultTip(int day) {
-    if (day <= 2) {
-      return 'Rest is the best medicine right now. Sip water regularly '
-          'and take your prescribed pain medication on schedule.';
-    }
-    if (day <= 7) {
-      return 'Short 5-minute walks improve blood flow and speed healing. '
-          'Avoid lifting anything heavier than a phone.';
-    }
-    if (day <= 14) {
-      return 'Your wound is closing well. Keep it clean and dry. '
-          'Eat protein-rich foods like eggs and beans to support tissue repair.';
-    }
-    if (day <= 30) {
-      return 'Strength returns slowly — don\'t rush it. Eat balanced meals '
-          'with sukuma wiki and lean protein. Stay well hydrated.';
-    }
-    return 'You are in the final stretch of recovery. Listen to your body '
-        'and resume activities gradually. Congratulations on your progress!';
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Center(
+                child: Text('🤖', style: TextStyle(fontSize: 20))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('AI Tip for Today',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary)),
+                const SizedBox(height: 4),
+                Text(tip,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.6)),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: onChat,
+                  child: const Text('Ask AI Assistant →',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

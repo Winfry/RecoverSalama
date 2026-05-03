@@ -1,12 +1,3 @@
-// ─────────────────────────────────────────────────────────────
-// SalamaRecover — Screen 06: AI Chat Assistant
-// Free-text Q&A powered by Gemini API + RAG over Kenya
-// clinical guidelines. Supports English + Kiswahili.
-// Quick chips for common questions. Red "Connect to Doctor"
-// bar appears when critical keywords are detected.
-// © 2025 Winfry Nyarangi Nyabuto. All Rights Reserved.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,19 +16,17 @@ class AiChatScreen extends ConsumerStatefulWidget {
 }
 
 class _AiChatScreenState extends ConsumerState<AiChatScreen> {
-  final _messageCtrl = TextEditingController();
+  final _msgCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _showDoctorCta = false;
 
-  // Pre-written quick questions — tapping auto-sends
   final _quickQuestions = [
-    'Is swelling normal?',
     'Can I shower?',
-    'What should I eat?',
-    'When can I walk?',
+    'When can I exercise?',
+    'What foods should I avoid?',
+    'Is swelling normal?',
   ];
 
-  // Keywords that trigger the "Connect to Doctor" CTA
   static const _criticalKeywords = [
     'bleeding', 'blood', 'fever', 'chest pain', 'breathing',
     'emergency', 'hospital', 'worse', 'severe', 'faint',
@@ -46,36 +35,28 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   @override
   void dispose() {
-    _messageCtrl.dispose();
+    _msgCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
 
-  /// Check if a message contains critical keywords
   bool _isCritical(String text) {
     final lower = text.toLowerCase();
     return _criticalKeywords.any((k) => lower.contains(k));
   }
 
-  /// Send a message and scroll to bottom
-  void _sendMessage(String text) {
+  void _send(String text) {
     if (text.trim().isEmpty) return;
+    if (_isCritical(text)) setState(() => _showDoctorCta = true);
 
-    // Check for critical keywords — show doctor CTA if found
-    if (_isCritical(text)) {
-      setState(() => _showDoctorCta = true);
-    }
-
-    // Pass patient context so Gemini can give surgery-specific answers
     final profile = ref.read(profileProvider);
     ref.read(chatProvider.notifier).sendMessage(
           text.trim(),
           surgeryType: profile.surgeryType,
           daysSinceSurgery: profile.daysSinceSurgery,
         );
-    _messageCtrl.clear();
+    _msgCtrl.clear();
 
-    // Scroll to bottom
     Future.delayed(const Duration(milliseconds: 200), () {
       if (_scrollCtrl.hasClients) {
         _scrollCtrl.animateTo(
@@ -94,51 +75,57 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final isTyping = chatState.isTyping;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Blue header with online status ──
+          // ── Header ──
           Container(
-            color: AppColors.primary,
+            color: AppColors.surface,
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
                 child: Row(
                   children: [
-                    // Green avatar circle
+                    GestureDetector(
+                      onTap: () => context.go(AppRoutes.dashboard),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded,
+                          size: 20, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(width: 12),
                     Container(
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: AppColors.success,
-                        borderRadius: BorderRadius.circular(20),
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
-                          child: Text('🤖',
-                              style: TextStyle(fontSize: 20))),
+                          child: Text('🤖', style: TextStyle(fontSize: 20))),
                     ),
-                    const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('AI Recovery Assistant',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700)),
-                        Row(
-                          children: [
-                            Icon(Icons.circle,
-                                size: 8, color: AppColors.success),
-                            SizedBox(width: 4),
-                            Text('Online · Day 5 · EN/SW',
-                                style: TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 11)),
-                          ],
-                        ),
-                      ],
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Pona AI Assistant',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary)),
+                          Row(
+                            children: [
+                              Icon(Icons.circle,
+                                  size: 7, color: AppColors.primary),
+                              SizedBox(width: 4),
+                              Text("I'm here to help 24/7",
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -146,127 +133,98 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ),
           ),
 
-          // ── Quick question chips ──
-          Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade200)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Quick questions',
-                    style: TextStyle(
-                        color: AppColors.textHint, fontSize: 10)),
-                const SizedBox(height: 4),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _quickQuestions.map((q) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: GestureDetector(
-                          onTap: () => _sendMessage(q),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
-                              borderRadius:
-                                  BorderRadius.circular(14),
-                              border: Border.all(
-                                  color: const Color(0xFF85B7EB)),
-                            ),
-                            child: Text(q,
-                                style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 11)),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // ── Chat messages ──
           Expanded(
             child: ListView.builder(
               controller: _scrollCtrl,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               itemCount: messages.length + (isTyping ? 1 : 0),
-              itemBuilder: (context, index) {
-                // Last item when AI is typing — show typing indicator
-                if (isTyping && index == messages.length) {
+              itemBuilder: (ctx, i) {
+                if (isTyping && i == messages.length) {
                   return const _TypingIndicator();
                 }
-                return _ChatBubble(message: messages[index]);
+                return _ChatBubble(message: messages[i]);
               },
             ),
           ),
 
-          // ── Connect to Doctor CTA — appears on critical keywords ──
+          // ── Doctor CTA ──
           if (_showDoctorCta)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF5F5),
-                border: Border(
-                    top: BorderSide(
-                        color: AppColors.emergency.withOpacity(0.3))),
-              ),
-              child: GestureDetector(
-                onTap: () => context.go(AppRoutes.hospital),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: AppColors.emergency.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Text('🚨', style: TextStyle(fontSize: 14)),
-                      SizedBox(width: 6),
-                      Text('Symptoms worsening? Connect to a Doctor',
-                          style: TextStyle(
-                              color: AppColors.emergency,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+            GestureDetector(
+              onTap: () => context.go(AppRoutes.hospital),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.emergency,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.phone_rounded, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Text('Connect to Doctor',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14)),
+                  ],
                 ),
               ),
             ),
 
-          // ── Input bar — pill shape + amber send button ──
+          // ── Quick chips ──
+          Container(
+            color: AppColors.surface,
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _quickQuestions.map((q) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: () => _send(q),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        child: Text(q,
+                            style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
+          // ── Input bar ──
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                  top: BorderSide(color: Colors.grey.shade200)),
+              color: AppColors.surface,
+              border: Border(top: BorderSide(color: AppColors.border)),
             ),
             child: SafeArea(
               top: false,
               child: Row(
                 children: [
-                  // Text input — rounded pill
                   Expanded(
                     child: TextField(
-                      controller: _messageCtrl,
+                      controller: _msgCtrl,
                       decoration: InputDecoration(
-                        hintText: 'Ask about recovery…',
+                        hintText: 'Type your message...',
                         hintStyle: const TextStyle(
                             color: AppColors.textHint, fontSize: 14),
                         filled: true,
@@ -275,50 +233,43 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                             horizontal: 16, vertical: 10),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(
-                              color: Colors.grey.shade200),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(
-                              color: Colors.grey.shade200),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: const BorderSide(
-                              color: AppColors.primary),
+                              color: AppColors.primary, width: 1.5),
                         ),
+                        suffixIcon: const Icon(Icons.mic_outlined,
+                            color: AppColors.textHint, size: 20),
                       ),
-                      onSubmitted: _sendMessage,
+                      onSubmitted: _send,
                     ),
                   ),
                   const SizedBox(width: 8),
-
-                  // Send button — disabled while AI is typing
                   GestureDetector(
-                    onTap: isTyping
-                        ? null
-                        : () => _sendMessage(_messageCtrl.text),
+                    onTap: isTyping ? null : () => _send(_msgCtrl.text),
                     child: Container(
-                      width: 42,
-                      height: 42,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: isTyping
-                            ? AppColors.textHint
-                            : AppColors.warning,
-                        borderRadius: BorderRadius.circular(21),
+                            ? AppColors.border
+                            : AppColors.primary,
+                        borderRadius: BorderRadius.circular(22),
                       ),
                       child: isTyping
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: Padding(
-                                padding: EdgeInsets.all(11),
-                                child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2),
-                              ))
-                          : const Icon(Icons.send,
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.send_rounded,
                               color: Colors.white, size: 18),
                     ),
                   ),
@@ -327,16 +278,12 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ),
           ),
 
-          // ── Bottom nav — active on AI (index 2) ──
           SalamaBottomNav(
-            currentIndex: 2,
+            currentIndex: 3,
             onTap: (i) {
               final routes = [
-                AppRoutes.dashboard,
-                AppRoutes.checkIn,
-                AppRoutes.aiChat,
-                AppRoutes.diet,
-                AppRoutes.hospital,
+                AppRoutes.dashboard, AppRoutes.diet,
+                AppRoutes.checkIn, AppRoutes.aiChat, AppRoutes.hospital,
               ];
               if (i < routes.length) context.go(routes[i]);
             },
@@ -347,10 +294,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 }
 
-/// Typing indicator — three animated dots shown while AI is processing
 class _TypingIndicator extends StatefulWidget {
   const _TypingIndicator();
-
   @override
   State<_TypingIndicator> createState() => _TypingIndicatorState();
 }
@@ -358,21 +303,15 @@ class _TypingIndicator extends StatefulWidget {
 class _TypingIndicatorState extends State<_TypingIndicator>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
+      vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat();
   }
-
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -381,53 +320,41 @@ class _TypingIndicatorState extends State<_TypingIndicator>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // AI avatar
           Container(
-            width: 28,
-            height: 28,
+            width: 30, height: 30,
             decoration: BoxDecoration(
-              color: AppColors.successLight,
-              borderRadius: BorderRadius.circular(14),
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(15),
             ),
-            child: const Center(
-                child: Text('🤖', style: TextStyle(fontSize: 14))),
+            child: const Center(child: Text('🤖', style: TextStyle(fontSize: 14))),
           ),
-          const SizedBox(width: 6),
-          // Typing bubble
+          const SizedBox(width: 8),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.successLight,
+              color: AppColors.surface,
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(2),
-                bottomRight: Radius.circular(16),
+                topLeft: Radius.circular(16), topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(2), bottomRight: Radius.circular(16),
               ),
-              border:
-                  Border.all(color: AppColors.success.withOpacity(0.15)),
+              border: Border.all(color: AppColors.border),
             ),
             child: AnimatedBuilder(
               animation: _ctrl,
-              builder: (_, __) {
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(3, (i) {
-                    final opacity =
-                        ((_ctrl.value * 3 - i) % 3 / 3).clamp(0.2, 1.0);
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.success.withOpacity(opacity),
-                      ),
-                    );
-                  }),
-                );
-              },
+              builder: (_, __) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(3, (i) {
+                  final opacity = ((_ctrl.value * 3 - i) % 3 / 3).clamp(0.2, 1.0);
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 7, height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary.withOpacity(opacity),
+                    ),
+                  );
+                }),
+              ),
             ),
           ),
         ],
@@ -436,85 +363,65 @@ class _TypingIndicatorState extends State<_TypingIndicator>
   }
 }
 
-/// Chat bubble widget — user bubbles right/blue, AI bubbles left/green.
-/// Asymmetric border radius creates the chat tail effect.
 class _ChatBubble extends StatelessWidget {
   final ChatMessage message;
-
   const _ChatBubble({required this.message});
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // AI avatar
           if (!isUser) ...[
             Container(
-              width: 28,
-              height: 28,
+              width: 30, height: 30,
               decoration: BoxDecoration(
-                color: AppColors.successLight,
-                borderRadius: BorderRadius.circular(14),
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(15),
               ),
-              child: const Center(
-                  child: Text('🤖', style: TextStyle(fontSize: 14))),
+              child: const Center(child: Text('🤖', style: TextStyle(fontSize: 14))),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
           ],
-
-          // Bubble
           Flexible(
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
+                  maxWidth: MediaQuery.of(context).size.width * 0.72),
               decoration: BoxDecoration(
-                color: isUser
-                    ? AppColors.primary
-                    : AppColors.successLight,
+                color: isUser ? AppColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
-                  // Tail effect — asymmetric corners
                   bottomLeft: Radius.circular(isUser ? 16 : 2),
                   bottomRight: Radius.circular(isUser ? 2 : 16),
                 ),
-                border: isUser
-                    ? null
-                    : Border.all(
-                        color: AppColors.success.withOpacity(0.15)),
+                border: isUser ? null : Border.all(color: AppColors.border),
               ),
               child: Text(
                 message.text,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: isUser ? Colors.white : AppColors.textPrimary,
                   height: 1.5,
                 ),
               ),
             ),
           ),
-
-          // User avatar
           if (isUser) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Container(
-              width: 28,
-              height: 28,
+              width: 30, height: 30,
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(15),
               ),
-              child: const Center(
-                  child: Text('🧑', style: TextStyle(fontSize: 14))),
+              child: const Center(child: Text('🧑', style: TextStyle(fontSize: 14))),
             ),
           ],
         ],
