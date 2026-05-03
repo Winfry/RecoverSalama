@@ -347,6 +347,192 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
 
+  void _showEmergencyNumbers() {
+    const contacts = [
+      {'emoji': '🚔', 'name': 'Police', 'number': '999', 'note': '24/7 emergency line'},
+      {'emoji': '🚑', 'name': 'National Ambulance', 'number': '0800 723 253', 'note': 'Free · 24/7'},
+      {'emoji': '🏥', 'name': 'Kenyatta National Hospital', 'number': '0202 726 300', 'note': '24/7 emergency'},
+      {'emoji': '💜', 'name': 'Befrienders Kenya', 'number': '0722 178 177', 'note': 'Mental health · Free & confidential'},
+      {'emoji': '🔥', 'name': 'Fire Brigade', 'number': '999', 'note': '24/7 emergency line'},
+      {'emoji': '🏥', 'name': 'Nairobi Hospital', 'number': '0730 636 000', 'note': 'Private · 24/7'},
+      {'emoji': '🏥', 'name': 'Aga Khan Hospital', 'number': '0366 511 000', 'note': 'Private · 24/7'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.60,
+        maxChildSize: 0.90,
+        minChildSize: 0.40,
+        expand: false,
+        builder: (_, scrollCtrl) => Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Row(
+                children: [
+                  Text('🆘', style: TextStyle(fontSize: 22)),
+                  SizedBox(width: 10),
+                  Text('Emergency Numbers',
+                      style: TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                itemCount: contacts.length,
+                itemBuilder: (_, i) {
+                  final c = contacts[i];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.emergencyLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                              child: Text(c['emoji']!,
+                                  style: const TextStyle(fontSize: 20))),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(c['name']!,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary)),
+                              Text(c['note']!,
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _call(c['number']!.replaceAll(' ', '')),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.emergency,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(c['number']!,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAbout() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Center(
+                  child: Text('🌿', style: TextStyle(fontSize: 36))),
+            ),
+            const SizedBox(height: 14),
+            const Text('Pona Salama',
+                style: TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            const Text('Version 1.0.0',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 16),
+            const Text(
+              'Pona Salama is a post-surgical recovery companion built for Kenyan patients. '
+              'Our AI-powered platform provides personalised diet plans, daily check-ins, '
+              'mental health support, and access to hospitals across Kenya.\n\n'
+              'Grounded in Kenya MOH Clinical Nutrition Guidelines (2010).',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  height: 1.6),
+            ),
+            const SizedBox(height: 20),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 12),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Built with ❤️ by ',
+                    style: TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+                Text('Winfry Nyarangi',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text('© 2025 Pona Salama. All rights reserved.',
+                style: TextStyle(
+                    fontSize: 11, color: AppColors.textHint)),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _pickLanguage() {
     showModalBottomSheet(
       context: context,

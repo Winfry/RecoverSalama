@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../shared/services/api_service.dart';
 import '../../../shared/services/cache_service.dart';
 import '../../profile/providers/profile_provider.dart';
 import 'recovery_provider.dart';

@@ -344,9 +344,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         width: double.infinity,
                         height: 52,
                         child: OutlinedButton.icon(
-                          onPressed: () {},
-                          icon: const Text('🇬',
-                              style: TextStyle(fontSize: 18)),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Google sign-in coming soon! Use phone & password for now.'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          },
+                          icon: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: AppColors.border, width: 1),
+                            ),
+                            child: const Center(
+                              child: Text('G',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF4285F4))),
+                            ),
+                          ),
                           label: const Text('Continue with Google'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,

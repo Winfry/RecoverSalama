@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../shared/widgets/salama_widgets.dart';
 import '../providers/mental_health_provider.dart';
 
 class MentalHealthScreen extends ConsumerStatefulWidget {
