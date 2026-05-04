@@ -99,6 +99,27 @@ async def _groq_chat(system_prompt: str, message: str) -> str:
     return response.choices[0].message.content
 
 
+async def _groq_structured(prompt: str) -> dict:
+    """Send a structured JSON prompt to Groq. Returns parsed dict."""
+    client = _get_groq_client()
+    if not client:
+        raise RuntimeError("Groq API key not configured")
+    response = await client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a JSON API. Respond ONLY with valid JSON. No markdown, no code blocks, no explanation.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.1,
+        max_tokens=2048,
+        response_format={"type": "json_object"},
+    )
+    return json.loads(response.choices[0].message.content)
+
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # RESPONSE MODES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

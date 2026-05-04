@@ -16,26 +16,50 @@ from app.services.ml.readmission_predictor import ReadmissionPredictor, _categor
 router = APIRouter()
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in km between two (lat, lng) points."""
+    R = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = (math.sin(dphi / 2) ** 2
+         + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
 @router.get("/")
 async def list_hospitals(
     lat: float | None = None,
     lng: float | None = None,
     hospital_type: str | None = None,
 ):
-    """List hospitals — optionally filtered by type and location."""
+    """List hospitals — sorted by distance when lat/lng provided, else alphabetically."""
     db = get_supabase_client()
     query = db.table("hospitals").select("*")
     if hospital_type:
         query = query.eq("type", hospital_type)
-    # Order: hospitals with GPS coordinates first (most useful for map view),
-    # then the rest alphabetically. Limit 5000 overrides Supabase's default 1000.
-    result = (
-        query
-        .order("name")
-        .limit(5000)
-        .execute()
-    )
-    return result.data
+    result = query.order("name").limit(5000).execute()
+    hospitals = result.data or []
+
+    if lat is not None and lng is not None:
+        # Annotate each hospital with its distance and sort nearest-first
+        for h in hospitals:
+            h_lat = h.get("lat")
+            h_lng = h.get("lng")
+            if h_lat is not None and h_lng is not None:
+                h["distance_km"] = round(
+                    _haversine_km(lat, lng, float(h_lat), float(h_lng)), 1
+                )
+            else:
+                h["distance_km"] = None
+
+        hospitals.sort(
+            key=lambda h: h["distance_km"]
+            if h["distance_km"] is not None
+            else float("inf")
+        )
+
+    return hospitals
 
 
 @router.get("/analytics")
