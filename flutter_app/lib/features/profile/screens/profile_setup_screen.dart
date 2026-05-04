@@ -170,6 +170,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   String _hospital = '';
 
   bool _isSaving = false;
+  bool _isEditing = false;
 
   // Allergy toggles
   final Map<String, bool> _allergyToggles = {

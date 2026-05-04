@@ -6,6 +6,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/salama_widgets.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../providers/dashboard_loader.dart';
 import '../providers/recovery_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -13,6 +14,10 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Trigger a fresh backend fetch every time the dashboard is shown.
+    // autoDispose ensures this re-runs on every mount (e.g. returning from check-in).
+    ref.watch(dashboardLoaderProvider);
+
     final profile = ref.watch(profileProvider);
     final recovery = ref.watch(recoveryProvider);
     final day = profile.daysSinceSurgery;
