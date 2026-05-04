@@ -644,12 +644,26 @@ class GeminiService:
 
         except json.JSONDecodeError as e:
             logger.warning(f"Gemini reasoning returned invalid JSON: {e}")
-            # Fall back to regular chat
             return await self._reasoning_fallback_to_chat(
                 message, rag_context, patient_context, conversation_history
             )
         except Exception as e:
-            logger.error(f"Gemini reasoning failed: {e}")
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                logger.warning("Gemini quota exhausted — falling back to Groq for reasoning")
+                try:
+                    result = await _groq_structured(prompt)
+                    return {
+                        "response": result.get("response", "I'm not sure. Please ask your doctor."),
+                        "reasoning_steps": result.get("reasoning_steps", {}),
+                        "sources": result.get("sources", []),
+                        "alert_hospital": result.get("alert_hospital", False),
+                        "diet_change": result.get("diet_change", False),
+                        "detected_language": result.get("detected_language", "en"),
+                    }
+                except Exception as groq_err:
+                    logger.error(f"Groq reasoning fallback failed: {groq_err}")
+            else:
+                logger.error(f"Gemini reasoning failed: {e}")
             return self._fallback_reasoning_response(message)
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -705,7 +719,17 @@ class GeminiService:
             )
             return response.text
         except Exception as e:
-            logger.error(f"Gemini mood support failed: {e}")
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                logger.warning("Gemini quota exhausted — falling back to Groq for mood support")
+                try:
+                    return await _groq_chat(
+                        "You are a compassionate post-surgical recovery support assistant for Kenyan patients. Respond warmly in 3-5 sentences.",
+                        prompt,
+                    )
+                except Exception as groq_err:
+                    logger.error(f"Groq mood support fallback failed: {groq_err}")
+            else:
+                logger.error(f"Gemini mood support failed: {e}")
             return self._fallback_mood_response(mood, language)
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
