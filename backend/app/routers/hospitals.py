@@ -3,6 +3,7 @@ Hospitals route — powers Flutter Screen 09 (Hospital Connect)
 and the hospital React dashboard analytics page.
 """
 
+import math
 from collections import defaultdict
 from datetime import date, timedelta
 
