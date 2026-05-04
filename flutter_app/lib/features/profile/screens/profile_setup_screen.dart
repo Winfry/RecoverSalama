@@ -345,6 +345,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 onTap: () {
                   if (_step > 1) {
                     setState(() => _step--);
+                  } else if (_isEditing) {
+                    context.go(AppRoutes.dashboard);
                   } else {
                     context.go(AppRoutes.landing);
                   }
@@ -862,7 +864,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       });
 
       if (!mounted) return;
-      context.go(AppRoutes.preSurgery);
+      if (_isEditing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully ✓'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        context.go(AppRoutes.dashboard);
+      } else {
+        context.go(AppRoutes.preSurgery);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
