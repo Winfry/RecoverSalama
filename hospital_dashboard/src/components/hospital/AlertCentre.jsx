@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { Bell, AlertTriangle, CheckCircle } from 'lucide-react';
 import { getAlerts, updateAlert } from '../../services/api';
 import { subscribeToAlerts } from '../../services/supabase';
 import { C } from '../../theme';
 import StatCard from '../common/StatCard';
-import Section from '../common/Section';
 import Badge from '../common/Badge';
 
 export default function AlertCentre() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const hospitalId = localStorage.getItem('hospital_id') || undefined;
+  const [filter, setFilter] = useState('all');
 
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ['alerts', hospitalId],
@@ -40,72 +41,132 @@ export default function AlertCentre() {
   const emergency = active.filter(a => a.risk_level === 'EMERGENCY').length;
   const high = active.filter(a => a.risk_level === 'HIGH').length;
 
-  const btnStyle = (bg, color, border) => ({
-    padding: "4px 10px",
-    fontSize: 11,
-    borderRadius: 4,
-    border,
-    color,
-    background: bg,
-    cursor: "pointer",
-  });
+  const filterPills = [
+    { value: 'all',       label: `All (${active.length})` },
+    { value: 'emergency', label: `Emergency (${emergency})` },
+    { value: 'high',      label: `High (${high})` },
+  ];
 
-  if (isLoading) return <div style={{ textAlign:"center", padding:"40px 0", color:C.textMuted }}>Loading alerts...</div>;
+  const displayed = filter === 'all'
+    ? active
+    : active.filter(a => a.risk_level.toLowerCase() === filter);
+
+  if (isLoading) return <div style={{ textAlign: 'center', padding: '60px 0', color: C.textMuted }}>Loading alerts...</div>;
 
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14, marginBottom:22 }}>
-        <StatCard label="Emergency Alerts" value={emergency} delta="Unacknowledged" accent="#E74C3C" borderColor={C.red} />
-        <StatCard label="High Alerts"      value={high}      delta="Active"          accent="#F39C12" borderColor={C.amber} />
-        <StatCard label="Active Total"     value={active.length} delta="Needs attention" accent="#58D68D" borderColor={C.green} />
+      {/* Page header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: C.textMain, margin: 0 }}>Alert Centre</h1>
+        <p style={{ fontSize: 13, color: C.textMuted, margin: '4px 0 0' }}>Real-time patient alerts — refreshes every 30s</p>
       </div>
 
-      <Section title={`Active Alerts (${active.length})`}>
-        {active.length > 0 ? active.map(a => (
-          <div key={a.id} style={{ display:"flex", alignItems:"flex-start", gap:12, paddingBottom:16, marginBottom:16, borderBottom:`1px solid ${C.border}` }}>
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 24 }}>
+        <StatCard label="Emergency Alerts" value={emergency} delta="Needs immediate attention" accent={C.red}    icon={AlertTriangle} />
+        <StatCard label="High Alerts"       value={high}      delta="Active"                   accent={C.amber}  icon={Bell} />
+        <StatCard label="Total Active"      value={active.length} delta="Unresolved"           accent={C.primary} icon={CheckCircle} />
+      </div>
+
+      {/* Filter pills */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {filterPills.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => setFilter(value)}
+            style={{
+              padding: '7px 16px', borderRadius: 20, fontSize: 12,
+              fontWeight: filter === value ? 600 : 400,
+              border: `1px solid ${filter === value ? C.primary : C.border}`,
+              background: filter === value ? C.primaryLight : C.surface,
+              color: filter === value ? C.primary : C.textMuted,
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Alert list */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        {displayed.length > 0 ? displayed.map((a, i) => (
+          <div
+            key={a.id}
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: 14,
+              padding: '18px 20px',
+              borderBottom: i < displayed.length - 1 ? `1px solid ${C.border}` : 'none',
+              background: a.risk_level === 'EMERGENCY' ? '#FFF5F5' : C.surface,
+            }}
+          >
+            {/* Risk dot */}
             <div style={{
-              width:8, height:8, borderRadius:"50%",
-              background: a.risk_level==='EMERGENCY' ? C.red : C.amber,
-              marginTop:5, flexShrink:0,
-              boxShadow: a.risk_level==='EMERGENCY' ? "0 0 6px rgba(192,57,43,0.6)" : "none",
+              width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+              background: a.risk_level === 'EMERGENCY' ? C.red : C.amber,
+              marginTop: 4,
+              boxShadow: a.risk_level === 'EMERGENCY' ? `0 0 8px ${C.red}60` : 'none',
             }} />
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:500, color:C.textMain, marginBottom:2 }}>
-                {a.patients?.name || a.phone || 'Patient'} <Badge level={a.risk_level} />
+
+            {/* Content */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: C.textMain }}>
+                  {a.patients?.name || a.phone || 'Patient'}
+                </span>
+                <Badge level={a.risk_level} />
+                {a.status === 'acknowledged' && (
+                  <span style={{ fontSize: 11, color: C.textMuted, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 7px' }}>
+                    Acknowledged
+                  </span>
+                )}
               </div>
-              <div style={{ fontSize:12, color:C.textMuted }}>{a.message}</div>
-              <div style={{ fontSize:11, color:C.textDim, marginTop:4, fontFamily:"monospace" }}>
-                {new Date(a.created_at).toLocaleString('en-KE')} · {(a.symptoms||[]).join(', ') || 'No symptoms listed'}
+              <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 4 }}>{a.message}</div>
+              <div style={{ fontSize: 11, color: C.textDim }}>
+                {new Date(a.created_at).toLocaleString('en-KE')}
+                {(a.symptoms || []).length > 0 && ` · ${a.symptoms.join(', ')}`}
               </div>
             </div>
-            <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <button
                 onClick={() => navigate(`/patients/${a.patient_id}`)}
-                style={btnStyle("rgba(45,125,210,0.1)", C.accentLight, "1px solid rgba(45,125,210,0.4)")}
+                style={{
+                  padding: '7px 14px', fontSize: 12, borderRadius: 7, cursor: 'pointer',
+                  border: `1px solid ${C.border}`, background: C.surface, color: C.textMain, fontWeight: 500,
+                }}
               >
                 View Patient
               </button>
               <button
                 onClick={() => ackMutation.mutate(a.id)}
                 disabled={a.status === 'acknowledged'}
-                style={{ ...btnStyle("rgba(45,125,210,0.1)", C.accentLight, "1px solid rgba(45,125,210,0.4)"), opacity: a.status==='acknowledged' ? 0.5 : 1 }}
+                style={{
+                  padding: '7px 14px', fontSize: 12, borderRadius: 7, cursor: a.status === 'acknowledged' ? 'default' : 'pointer',
+                  border: `1px solid ${C.border}`, background: C.surface, color: C.textMuted,
+                  opacity: a.status === 'acknowledged' ? 0.5 : 1,
+                }}
               >
                 {a.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
               </button>
               <button
                 onClick={() => resolveMutation.mutate(a.id)}
-                style={btnStyle("rgba(39,174,96,0.1)", "#58D68D", "1px solid rgba(39,174,96,0.4)")}
+                style={{
+                  padding: '7px 14px', fontSize: 12, borderRadius: 7, cursor: 'pointer',
+                  border: `1px solid ${C.green}`, background: C.greenLight, color: C.green, fontWeight: 600,
+                }}
               >
                 Resolve
               </button>
             </div>
           </div>
         )) : (
-          <div style={{ textAlign:"center", padding:"32px 0", color:C.textMuted, fontSize:13 }}>
-            ✓ All alerts resolved
+          <div style={{ textAlign: 'center', padding: '48px 0', color: C.textMuted, fontSize: 13 }}>
+            All alerts resolved
           </div>
         )}
-      </Section>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Users, TrendingUp, AlertTriangle, Activity } from 'lucide-react';
 import { getAnalytics } from '../../services/api';
 import { C } from '../../theme';
 import StatCard from '../common/StatCard';
@@ -14,94 +15,129 @@ export default function Analytics() {
   });
 
   if (isLoading) return <LoadingState />;
-  if (error)     return <ErrorState message={error.message} />;
+  if (error) return <ErrorState message={error.message} />;
 
   const riskBreakdown = data.risk_breakdown || {};
   const total = Object.values(riskBreakdown).reduce((a,b) => a+b, 0) || 1;
 
-  // SVG line chart for pain trend
+  // SVG pain trend line chart
   const pts = (data.pain_trend || []).map(d => d.avg_pain ?? 0);
   const days = (data.pain_trend || []).map(d => d.day || '');
-  const W = 280, H = 90;
+  const W = 320, H = 100;
   const maxP = Math.max(...pts, 10);
-  const coords = pts.map((v, i) => ({ x: 16 + i * 40, y: H - (v / maxP) * H }));
-  const polyline = coords.map(c => `${c.x},${c.y}`).join(" ");
-  const polygon = coords.length > 0
+  const coords = pts.map((v, i) => ({
+    x: 8 + i * ((W - 16) / Math.max(pts.length - 1, 1)),
+    y: H - (v / maxP) * (H - 8) + 4,
+  }));
+  const polyline = coords.map(c => `${c.x},${c.y}`).join(' ');
+  const polygon = coords.length > 1
     ? `${coords[0].x},${H} ${polyline} ${coords[coords.length-1].x},${H}`
     : '';
 
-  // Surgery risk breakdown rows
   const surgeryRows = [
-    ["Appendectomy",    [44,28,17,11]],
-    ["C-Section",       [60,25,10,5]],
-    ["Knee Replacement",[36,27,27,10]],
-    ["Hernia Repair",   [55,22,23,0]],
+    { label: 'Appendectomy',     widths: [44, 28, 17, 11] },
+    { label: 'C-Section',        widths: [60, 25, 10, 5]  },
+    { label: 'Knee Replacement', widths: [36, 27, 27, 10] },
+    { label: 'Hernia Repair',    widths: [55, 22, 23, 0]  },
   ];
+
+  const riskColors = [C.green, C.blue, C.amber, C.red];
+  const riskBgs    = [C.greenLight, C.blueLight, C.amberLight, C.redLight];
 
   return (
     <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
-        <div style={{ fontSize:18, fontWeight:600, color:C.textMain }}>Analytics</div>
-        <div style={{ fontSize:11, color:C.textDim }}>Refreshes every 60s</div>
+      {/* Page header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: C.textMain, margin: 0 }}>Analytics</h1>
+          <p style={{ fontSize: 13, color: C.textMuted, margin: '4px 0 0' }}>Refreshes every 60s</p>
+        </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:22 }}>
-        <StatCard label="Total Patients"       value={data.total_patients}                                                  delta="Active in system"                                                    borderColor={C.accent} />
-        <StatCard label="7-Day Check-in Rate"  value={`${data.compliance_rate ?? 0}%`}                                     delta={`${data.checkins_today} checked in today`}                          accent="#58D68D" borderColor={C.green} />
-        <StatCard label="High Risk Patients"   value={data.high_risk_count}                                                 delta="Emergency + High"                                                    accent="#E74C3C" borderColor={C.red} />
-        <StatCard label="Avg Pain This Week"   value={data.avg_pain_this_week > 0 ? `${data.avg_pain_this_week}/10` : '—'} delta="Across all check-ins"                                                accent="#F39C12" borderColor={C.amber} />
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+        <StatCard
+          label="Total Patients"
+          value={data.total_patients}
+          delta="Active in system"
+          icon={Users}
+        />
+        <StatCard
+          label="Check-in Rate"
+          value={`${data.compliance_rate ?? 0}%`}
+          delta={`${data.checkins_today} checked in today`}
+          accent={C.green}
+          icon={TrendingUp}
+        />
+        <StatCard
+          label="High Risk"
+          value={data.high_risk_count}
+          delta="Emergency + High"
+          accent={C.red}
+          icon={AlertTriangle}
+        />
+        <StatCard
+          label="Avg Pain"
+          value={data.avg_pain_this_week > 0 ? `${data.avg_pain_this_week}/10` : '—'}
+          delta="7-day average"
+          accent={C.amber}
+          icon={Activity}
+        />
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         {/* Risk by surgery type */}
         <Section title="Risk Distribution by Surgery Type">
-          {surgeryRows.map(([label, widths]) => (
-            <div key={label} style={{ marginBottom:14 }}>
-              <div style={{ fontSize:11, color:C.textMuted, marginBottom:6 }}>{label}</div>
-              <div style={{ display:"flex", height:14, borderRadius:3, overflow:"hidden", gap:2 }}>
-                {[
-                  ["rgba(39,174,96,0.5)",  widths[0]],
-                  ["rgba(45,125,210,0.5)", widths[1]],
-                  ["rgba(230,126,34,0.5)", widths[2]],
-                  ["rgba(192,57,43,0.6)",  widths[3]],
-                ].map(([bg, w], i) => w > 0 && (
-                  <div key={i} style={{ width:`${w}%`, background:bg }} />
+          {surgeryRows.map(({ label, widths }) => (
+            <div key={label} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.textMain, marginBottom: 6 }}>{label}</div>
+              <div style={{ display: 'flex', height: 16, borderRadius: 4, overflow: 'hidden', gap: 2 }}>
+                {widths.map((w, i) => w > 0 && (
+                  <div
+                    key={i}
+                    title={['Low','Medium','High','Emergency'][i]}
+                    style={{ width: `${w}%`, background: riskBgs[i], border: `1px solid ${riskColors[i]}30` }}
+                  />
                 ))}
               </div>
             </div>
           ))}
-          <div style={{ display:"flex", gap:14, marginTop:14, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
-            {[["Low","rgba(39,174,96,0.5)"],["Medium","rgba(45,125,210,0.5)"],["High","rgba(230,126,34,0.5)"],["Emergency","rgba(192,57,43,0.6)"]].map(([label, bg]) => (
-              <div key={label} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10, color:C.textMuted }}>
-                <div style={{ width:10, height:10, borderRadius:2, background:bg }} />{label}
+          <div style={{ display: 'flex', gap: 16, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+            {['Low','Medium','High','Emergency'].map((label, i) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: C.textMuted }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: riskBgs[i], border: `1px solid ${riskColors[i]}50` }} />
+                {label}
               </div>
             ))}
           </div>
         </Section>
 
-        {/* Pain trend SVG */}
+        {/* Pain trend */}
         <Section title="7-Day Average Pain Trend">
           {coords.length > 0 ? (
             <>
-              <svg viewBox={`0 0 ${W} ${H+20}`} style={{ width:"100%", overflow:"visible" }}>
-                {coords.map((_, i) => (
-                  <line key={i} x1={16+i*40} y1={0} x2={16+i*40} y2={H} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+              <svg viewBox={`0 0 ${W} ${H + 24}`} style={{ width: '100%', overflow: 'visible' }}>
+                {[2,4,6,8,10].map(v => (
+                  <line key={v}
+                    x1={0} y1={H - (v/maxP)*(H-8)+4} x2={W} y2={H - (v/maxP)*(H-8)+4}
+                    stroke={C.border} strokeWidth={1} strokeDasharray="4 4"/>
                 ))}
-                {polygon && <polygon points={polygon} fill="rgba(45,125,210,0.15)" />}
-                <polyline points={polyline} fill="none" stroke={C.accent} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+                {polygon && <polygon points={polygon} fill={`${C.primary}15`} />}
+                <polyline points={polyline} fill="none" stroke={C.primary} strokeWidth={2.5}
+                  strokeLinejoin="round" strokeLinecap="round" />
                 {coords.map((c, i) => (
-                  <circle key={i} cx={c.x} cy={c.y} r={3} fill={i===coords.length-1 ? C.accentLight : C.accent} />
+                  <circle key={i} cx={c.x} cy={c.y} r={4} fill={C.primary} stroke="#fff" strokeWidth={2}/>
                 ))}
                 {days.map((d, i) => (
-                  <text key={d} x={16+i*40} y={H+14} fontSize={7.5} fill={C.textDim} textAnchor="middle">{d}</text>
+                  <text key={d} x={coords[i]?.x} y={H + 18} fontSize={9} fill={C.textDim} textAnchor="middle">{d}</text>
                 ))}
               </svg>
-              <div style={{ fontSize:11, color:C.textMuted, marginTop:6 }}>
+              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
                 Mean daily pain score across all patients
               </div>
             </>
           ) : (
-            <div style={{ textAlign:"center", padding:"24px 0", color:C.textMuted, fontSize:12 }}>No data yet</div>
+            <div style={{ textAlign: 'center', padding: '32px 0', color: C.textMuted, fontSize: 12 }}>No data yet</div>
           )}
         </Section>
       </div>
@@ -110,48 +146,57 @@ export default function Analytics() {
       <Section title="Top 5 Readmission Risk Patients" noPadBody>
         {data.readmission_risks?.length > 0 ? (
           <>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr>
-                  {["Patient","Surgery","Day","Risk Score","Risk Bar","Key Factor"].map(h => (
-                    <th key={h} style={{ textAlign:"left", padding:"0 12px 10px", fontSize:10, fontWeight:600, color:C.textDim, textTransform:"uppercase", letterSpacing:"0.8px" }}>{h}</th>
+                <tr style={{ background: C.bg }}>
+                  {['Patient','Surgery','Recovery Day','Risk Score','Risk Bar'].map(h => (
+                    <th key={h} style={{
+                      textAlign: 'left', padding: '10px 16px',
+                      fontSize: 11, fontWeight: 600, color: C.textMuted,
+                      textTransform: 'uppercase', letterSpacing: '0.5px',
+                      borderBottom: `1px solid ${C.border}`,
+                    }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {data.readmission_risks.map(r => {
+                {data.readmission_risks.map((r, i) => {
                   const pct = Math.round(r.probability * 100);
-                  const color = pct >= 80 ? "#E74C3C" : "#F39C12";
+                  const color = pct >= 70 ? C.red : pct >= 40 ? C.amber : C.green;
+                  const bg    = pct >= 70 ? C.redLight : pct >= 40 ? C.amberLight : C.greenLight;
                   return (
-                    <tr key={r.patient_id}>
-                      <td style={{ padding:"10px 12px", borderTop:`1px solid ${C.border}`, fontWeight:500, color:C.textMain }}>{r.patient_name}</td>
-                      <td style={{ padding:"10px 12px", borderTop:`1px solid ${C.border}`, color:C.textMain }}>{r.surgery_type || '—'}</td>
-                      <td style={{ padding:"10px 12px", borderTop:`1px solid ${C.border}`, color:C.textMain, fontFamily:"monospace" }}>{r.days_since_surgery}</td>
-                      <td style={{ padding:"10px 12px", borderTop:`1px solid ${C.border}`, fontFamily:"monospace", fontWeight:600, color }}>{pct}%</td>
-                      <td style={{ padding:"10px 12px", borderTop:`1px solid ${C.border}`, width:120 }}>
-                        <div style={{ height:6, borderRadius:3, background:C.navy, overflow:"hidden" }}>
-                          <div style={{ height:"100%", width:`${pct}%`, background:color, borderRadius:3 }} />
-                        </div>
+                    <tr key={r.patient_id} style={{ background: i % 2 === 0 ? C.surface : C.bg }}>
+                      <td style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, fontWeight: 600, color: C.textMain }}>{r.patient_name}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, color: C.textMuted }}>{r.surgery_type || '—'}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, color: C.textMuted }}>Day {r.days_since_surgery}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
+                        <span style={{ fontWeight: 700, color, background: bg, padding: '3px 10px', borderRadius: 6, fontSize: 12 }}>{pct}%</span>
                       </td>
-                      <td style={{ padding:"10px 12px", borderTop:`1px solid ${C.border}`, fontSize:11, color:C.textMuted }}>
-                        {r.factors?.[0] || r.recommendation || '—'}
+                      <td style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, width: 140 }}>
+                        <div style={{ height: 8, borderRadius: 4, background: C.bg, overflow: 'hidden', border: `1px solid ${C.border}` }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 4 }} />
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            <div style={{ padding:"14px 18px", borderTop:`1px solid ${C.border}`, display:"flex", gap:16, flexWrap:"wrap" }}>
-              {[["Low","rgba(39,174,96,0.5)","routine monitoring"],["Medium","rgba(230,126,34,0.5)","follow up in 3–5 days"],["High","rgba(192,57,43,0.6)","call or visit within 48 hrs"]].map(([label,bg,note]) => (
-                <div key={label} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10, color:C.textMuted }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:bg }} />
-                  {label} — {note}
+            <div style={{ padding: '14px 20px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Low (<40%)',         color: C.green, note: 'Routine monitoring' },
+                { label: 'Medium (40–70%)',     color: C.amber, note: 'Follow up 3–5 days' },
+                { label: 'High (70%+)',         color: C.red,   note: 'Call within 48 hrs' },
+              ].map(({ label, color, note }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.textMuted }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                  <strong style={{ color }}>{label}</strong> — {note}
                 </div>
               ))}
             </div>
           </>
         ) : (
-          <div style={{ textAlign:"center", padding:"32px 0", color:C.textMuted, fontSize:13 }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: C.textMuted, fontSize: 13 }}>
             No patient data yet — check-in data will appear here once patients start using the app.
           </div>
         )}
@@ -163,9 +208,9 @@ export default function Analytics() {
 function LoadingState() {
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         {[1,2,3,4].map(i => (
-          <div key={i} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"16px 18px", height:90, opacity:0.5 }} />
+          <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, height: 100, opacity: 0.4 }} />
         ))}
       </div>
     </div>
@@ -174,9 +219,9 @@ function LoadingState() {
 
 function ErrorState({ message }) {
   return (
-    <div style={{ background:C.surface, border:`1px solid rgba(192,57,43,0.3)`, borderRadius:8, padding:32, textAlign:"center" }}>
-      <div style={{ fontSize:13, color:"#E74C3C", fontWeight:600 }}>Could not load analytics</div>
-      <div style={{ fontSize:12, color:C.textMuted, marginTop:6 }}>{message}</div>
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 40, textAlign: 'center' }}>
+      <div style={{ fontSize: 14, color: C.red, fontWeight: 600, marginBottom: 6 }}>Could not load analytics</div>
+      <div style={{ fontSize: 13, color: C.textMuted }}>{message}</div>
     </div>
   );
 }
