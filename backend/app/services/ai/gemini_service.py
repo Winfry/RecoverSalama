@@ -777,7 +777,17 @@ class GeminiService:
             )
             return response.text
         except Exception as e:
-            logger.error(f"Gemini caregiver summary failed: {e}")
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                logger.warning("Gemini quota exhausted — falling back to Groq for caregiver summary")
+                try:
+                    return await _groq_chat(
+                        "You are a WhatsApp recovery update generator. Write a brief, warm 3-5 line message.",
+                        prompt,
+                    )
+                except Exception as groq_err:
+                    logger.error(f"Groq caregiver summary fallback failed: {groq_err}")
+            else:
+                logger.error(f"Gemini caregiver summary failed: {e}")
             return self._fallback_caregiver_summary(patient_context, checkin_data, language)
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -832,7 +842,20 @@ class GeminiService:
             data.setdefault("meals", {})
             return data
         except Exception as e:
-            logger.error(f"Gemini meal plan failed: {e}")
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                logger.warning("Gemini quota exhausted — falling back to Groq for meal plan")
+                try:
+                    data = await _groq_structured(prompt)
+                    data.setdefault("phase", phase)
+                    data.setdefault("phase_label", phase_label)
+                    data.setdefault("target_kcal", target_kcal)
+                    data.setdefault("ai_tip", "")
+                    data.setdefault("meals", {})
+                    return data
+                except Exception as groq_err:
+                    logger.error(f"Groq meal plan fallback failed: {groq_err}")
+            else:
+                logger.error(f"Gemini meal plan failed: {e}")
             return self._fallback_meal_plan(phase, phase_label, target_kcal)
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -877,7 +900,16 @@ class GeminiService:
             data.setdefault("alternatives", [])
             return data
         except Exception as e:
-            logger.error(f"Gemini meal alternatives failed: {e}")
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                logger.warning("Gemini quota exhausted — falling back to Groq for meal alternatives")
+                try:
+                    data = await _groq_structured(prompt)
+                    data.setdefault("alternatives", [])
+                    return data
+                except Exception as groq_err:
+                    logger.error(f"Groq meal alternatives fallback failed: {groq_err}")
+            else:
+                logger.error(f"Gemini meal alternatives failed: {e}")
             return self._fallback_meal_alternatives(meal_type)
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
