@@ -1,37 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 * { box-sizing: border-box; }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #0F1E2E;
-  color: #E8EDF2;
+  background-color: #F5F7FA;
+  color: #1A2332;
   margin: 0;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0D1B2A; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-
-/* Input / select dark override */
-input, select, textarea {
-  color-scheme: dark;
-}
+::-webkit-scrollbar-track { background: #F5F7FA; }
+::-webkit-scrollbar-thumb { background: #D1D9E0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #B0BEC5; }
 
 /* Remove default button styles */
 button { font-family: inherit; }
-
-/* CSS variables used by surgery_reference — mapped to dashboard theme */
-:root {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --color-text-primary: #E8EDF2;
-  --color-text-secondary: #8A9BB0;
-  --color-background-secondary: #182434;
-  --color-background-tertiary: #1F3048;
-  --color-border-secondary: rgba(255,255,255,0.10);
-  --color-border-tertiary: rgba(255,255,255,0.05);
-}
 
