@@ -282,6 +282,34 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final p = ref.read(profileProvider);
+      if (!p.isLoaded || p.name.isEmpty) return;
+
+      // Profile already exists — this is an edit, not a first-time setup
+      setState(() {
+        _isEditing = true;
+        _nameCtrl.text = p.name;
+        _ageCtrl.text = p.age > 0 ? p.age.toString() : '';
+        _weightCtrl.text = p.weight > 0 ? p.weight.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') : '';
+        _gender = ['Female', 'Male', 'Other'].contains(p.gender) ? p.gender : 'Female';
+        _surgery = p.surgeryType;
+        _surgeryDate = p.surgeryDate;
+        _hospital = p.hospital;
+        _caregiverCtrl.text = p.caregiverPhone;
+        _allergiesCtrl.text = p.otherAllergies;
+        for (final allergy in p.allergies) {
+          if (_allergyToggles.containsKey(allergy)) {
+            _allergyToggles[allergy] = true;
+          }
+        }
+      });
+    });
+  }
+
+  @override
   void dispose() {
     _nameCtrl.dispose();
     _ageCtrl.dispose();
