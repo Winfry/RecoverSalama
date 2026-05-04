@@ -5,27 +5,28 @@ export default function Section({ title, action, onAction, children, noPadBody }
     <div style={{
       background: C.surface,
       border: `1px solid ${C.border}`,
-      borderRadius: 8,
-      marginBottom: 18,
+      borderRadius: 12,
+      marginBottom: 16,
+      overflow: 'hidden',
     }}>
       <div style={{
-        padding: "14px 18px",
+        padding: '16px 20px',
         borderBottom: `1px solid ${C.border}`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: C.textMain }}>{title}</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: C.textMain }}>{title}</span>
         {action && (
           <span
-            style={{ fontSize: 11, color: C.accentLight, cursor: "pointer" }}
+            style={{ fontSize: 12, color: C.primary, cursor: 'pointer', fontWeight: 500 }}
             onClick={onAction}
           >
             {action}
           </span>
         )}
       </div>
-      <div style={noPadBody ? {} : { padding: 18 }}>{children}</div>
+      <div style={noPadBody ? {} : { padding: '20px' }}>{children}</div>
     </div>
   );
 }

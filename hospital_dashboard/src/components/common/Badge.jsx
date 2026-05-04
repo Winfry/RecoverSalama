@@ -5,13 +5,12 @@ export default function Badge({ level }) {
   return (
     <span style={{
       ...s,
-      padding: "3px 8px",
-      borderRadius: 4,
-      fontSize: 10,
+      padding: '3px 8px',
+      borderRadius: 6,
+      fontSize: 11,
       fontWeight: 600,
-      letterSpacing: "0.5px",
-      textTransform: "uppercase",
-      display: "inline-block",
+      letterSpacing: '0.3px',
+      display: 'inline-block',
     }}>
       {(level || 'LOW').toUpperCase()}
     </span>
