@@ -57,10 +57,10 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             children: [
               // ── Top section: white background with logo + name ──
-              SafeArea(
+              const SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 44),
+                  padding: EdgeInsets.only(top: 44),
                   child: Column(
                     children: [
                       // Teal heart logo with white cross
@@ -100,7 +100,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
 
                     // Bottom text + page dots
-                    Positioned(
+                    const Positioned(
                       left: 0, right: 0, bottom: 0,
                       child: SafeArea(
                         top: false,
@@ -304,9 +304,9 @@ class _ScenePainter extends CustomPainter {
   // --- Side plants ---
 
   void _drawSidePlants(Canvas canvas, double w, double h) {
-    final darkGreen = const Color(0xFF1B6B3A);
-    final medGreen  = const Color(0xFF2E8050);
-    final lightGreen = const Color(0xFF4CAF71);
+    const darkGreen = Color(0xFF1B6B3A);
+    const medGreen  = Color(0xFF2E8050);
+    const lightGreen = Color(0xFF4CAF71);
 
     // Left side
     _leaf(canvas, Offset(w * 0.0,  h * 0.68), 40, 28, -0.25, darkGreen);
@@ -453,28 +453,66 @@ class _ScenePainter extends CustomPainter {
     // ── Head ──
     final headCy = torsoTop - h * 0.075;
     final headR  = w * 0.085;
-    canvas.drawCircle(Offset(cx, headCy), headR, skinPaint);
 
-    // Face highlights (subtle)
+    // Hair drawn FIRST so face features render on top
+    final hairPaint = Paint()..color = hair..style = PaintingStyle.fill;
+    // Hair cap: covers the top ~55% of the head (dome shape)
+    final hairCapPath = Path()
+      ..moveTo(cx - headR * 1.0, headCy - headR * 0.08)
+      ..quadraticBezierTo(cx - headR * 1.1, headCy - headR * 1.5, cx, headCy - headR * 1.1)
+      ..quadraticBezierTo(cx + headR * 1.1, headCy - headR * 1.5, cx + headR * 1.0, headCy - headR * 0.08)
+      ..arcToPoint(
+        Offset(cx - headR * 1.0, headCy - headR * 0.08),
+        radius: Radius.circular(headR),
+        clockwise: false,
+        largeArc: false,
+      );
+    // Draw full head circle first (skin), then hair cap on top
+    canvas.drawCircle(Offset(cx, headCy), headR, skinPaint);
+    canvas.drawPath(hairCapPath, hairPaint);
+
+    // Hair bun
+    canvas.drawCircle(Offset(cx, headCy - headR * 1.0), headR * 0.38, hairPaint);
+
+    // Hair band (green)
+    final bandPaint = Paint()..color = hairBand..style = PaintingStyle.stroke..strokeWidth = 4;
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx, headCy - headR * 1.0), width: headR * 0.85, height: headR * 0.85),
+      math.pi * 0.8, math.pi * 1.4, false, bandPaint,
+    );
+
+    // Face features drawn AFTER hair so they show on top
+    // Cheek highlights
     final highlightPaint = Paint()..color = const Color(0xFFA0724A)..style = PaintingStyle.fill;
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx - w * 0.025, headCy + h * 0.005), width: w * 0.018, height: h * 0.012),
+      Rect.fromCenter(center: Offset(cx - headR * 0.38, headCy + headR * 0.18), width: headR * 0.28, height: headR * 0.16),
       highlightPaint,
     );
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx + w * 0.025, headCy + h * 0.005), width: w * 0.018, height: h * 0.012),
+      Rect.fromCenter(center: Offset(cx + headR * 0.38, headCy + headR * 0.18), width: headR * 0.28, height: headR * 0.16),
       highlightPaint,
     );
 
-    // Eyes
+    // Eyes (in lower half of face, well below hair cap boundary)
     final eyePaint = Paint()..color = const Color(0xFF1A0A00)..style = PaintingStyle.fill;
+    final eyeY = headCy + headR * 0.10;
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx - w * 0.026, headCy - h * 0.002), width: w * 0.022, height: h * 0.012),
+      Rect.fromCenter(center: Offset(cx - headR * 0.32, eyeY), width: headR * 0.26, height: headR * 0.16),
       eyePaint,
     );
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx + w * 0.026, headCy - h * 0.002), width: w * 0.022, height: h * 0.012),
+      Rect.fromCenter(center: Offset(cx + headR * 0.32, eyeY), width: headR * 0.26, height: headR * 0.16),
       eyePaint,
+    );
+    // Eye whites
+    final eyeWhite = Paint()..color = Colors.white..style = PaintingStyle.fill;
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx - headR * 0.28, eyeY - headR * 0.02), width: headR * 0.10, height: headR * 0.07),
+      eyeWhite,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx + headR * 0.28, eyeY - headR * 0.02), width: headR * 0.10, height: headR * 0.07),
+      eyeWhite,
     );
 
     // Smile
@@ -483,27 +521,11 @@ class _ScenePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.8
       ..strokeCap = StrokeCap.round;
+    final smileY = headCy + headR * 0.42;
     final smilePath = Path()
-      ..moveTo(cx - w * 0.022, headCy + h * 0.018)
-      ..quadraticBezierTo(cx, headCy + h * 0.030, cx + w * 0.022, headCy + h * 0.018);
+      ..moveTo(cx - headR * 0.28, smileY)
+      ..quadraticBezierTo(cx, smileY + headR * 0.18, cx + headR * 0.28, smileY);
     canvas.drawPath(smilePath, smilePaint);
-
-    // ── Hair ──
-    final hairPaint = Paint()..color = hair..style = PaintingStyle.fill;
-    // Main hair (covers top & sides of head)
-    final hairPath = Path()
-      ..addOval(Rect.fromCenter(center: Offset(cx, headCy - headR * 0.1), width: headR * 2.15, height: headR * 1.6));
-    canvas.drawPath(hairPath, hairPaint);
-
-    // Hair bun
-    canvas.drawCircle(Offset(cx, headCy - headR * 0.85), headR * 0.38, hairPaint);
-
-    // Hair band (green)
-    final bandPaint = Paint()..color = hairBand..style = PaintingStyle.stroke..strokeWidth = 4;
-    canvas.drawArc(
-      Rect.fromCenter(center: Offset(cx, headCy - headR * 0.85), width: headR * 0.9, height: headR * 0.9),
-      math.pi * 0.9, math.pi * 1.2, false, bandPaint,
-    );
   }
 
   void _drawArm(Canvas canvas, double cx, double groundY, double h, double w,
