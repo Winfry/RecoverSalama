@@ -64,9 +64,9 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     children: [
                       // Teal heart logo with white cross
-                      const _HeartLogo(),
-                      const SizedBox(height: 16),
-                      const Text(
+                      _HeartLogo(),
+                      SizedBox(height: 16),
+                      Text(
                         'Pona Salama',
                         style: TextStyle(
                           color: Color(0xFF1A2E35),
@@ -75,8 +75,8 @@ class _SplashScreenState extends State<SplashScreen>
                           letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
+                      SizedBox(height: 6),
+                      Text(
                         'Recover. Heal. Live.',
                         style: TextStyle(
                           color: Color(0xFF6E9BA6),
@@ -107,7 +107,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
+                            Text(
                               'Your AI companion for a\nfaster, safer recovery.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -117,9 +117,9 @@ class _SplashScreenState extends State<SplashScreen>
                                 height: 1.45,
                               ),
                             ),
-                            const SizedBox(height: 18),
-                            const _PageDots(count: 4, active: 0),
-                            const SizedBox(height: 28),
+                            SizedBox(height: 18),
+                            _PageDots(count: 4, active: 0),
+                            SizedBox(height: 28),
                           ],
                         ),
                       ),
