@@ -221,10 +221,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             ),
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty)
+                            if (v == null || v.isEmpty) {
                               return 'Password is required';
-                            if (v.length < 6)
+                            }
+                            if (v.length < 6) {
                               return 'Min 6 characters';
+                            }
                             return null;
                           },
                         ),
