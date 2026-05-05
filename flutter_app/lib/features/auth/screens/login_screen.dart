@@ -520,7 +520,7 @@ class _GoogleLogoPainter extends CustomPainter {
     final cy = size.height / 2;
     final r = size.width * 0.38;
     final sw = size.width * 0.19;
-    final d = math.pi / 180;
+    const d = math.pi / 180;
 
     void arc(Color color, double startDeg, double sweepDeg) =>
         canvas.drawArc(
