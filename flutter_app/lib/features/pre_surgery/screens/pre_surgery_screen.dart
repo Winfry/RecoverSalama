@@ -149,7 +149,10 @@ class _PreSurgeryScreenState extends ConsumerState<PreSurgeryScreen> {
               child: Column(
                 children: [
                   // Checklist sections (Health Prep, Hospital Bag, Doctor Questions)
-                  ..._sections.map((section) => _buildSection(section)),
+                  ..._sections.map((section) => _buildSection(
+                        section,
+                        ref.watch(preSurgeryProvider),
+                      )),
 
                   // Emotional readiness card
                   _buildEmotionalCard(),
@@ -175,7 +178,7 @@ class _PreSurgeryScreenState extends ConsumerState<PreSurgeryScreen> {
   /// Builds a checklist section card.
   /// 'checkbox' type: tappable items with green fill when checked.
   /// 'bullet' type: read-only reference items with diamond bullets.
-  Widget _buildSection(Map section) {
+  Widget _buildSection(Map section, Map<String, bool> checkedState) {
     final items = section['items'] as List<String>;
     final isBullet = section['type'] == 'bullet';
     final color = section['color'] as Color;
