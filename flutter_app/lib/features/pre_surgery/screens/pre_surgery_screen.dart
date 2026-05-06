@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/salama_widgets.dart';
+import '../providers/pre_surgery_provider.dart';
 
 class PreSurgeryScreen extends ConsumerStatefulWidget {
   const PreSurgeryScreen({super.key});
@@ -24,9 +25,6 @@ class PreSurgeryScreen extends ConsumerStatefulWidget {
 }
 
 class _PreSurgeryScreenState extends ConsumerState<PreSurgeryScreen> {
-  // Tracks which checklist items are ticked (persists within session)
-  final Map<String, bool> _checked = {};
-
   // Three checklist sections with different colors and interaction types
   final _sections = [
     {
