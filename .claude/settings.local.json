@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\User\\\\projects\\\\Personal\\\\RecoverSalama\\\\flutter_app\\\\assets\\\\images\\\\landing\" | Select-Object Name, @{N='KB';E={[math]::Round\\($_.Length/1KB,1\\)}} | Format-Table -AutoSize | Out-String)"
+    ]
+  }
+}

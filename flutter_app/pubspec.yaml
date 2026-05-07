@@ -90,6 +90,7 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/images/landing/
     - .env
 
   # Localisation
